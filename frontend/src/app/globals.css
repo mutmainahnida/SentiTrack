@@ -1,0 +1,117 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ── CSS Variables ─────────────────────────────────────── */
+:root {
+  --background: #f8f9ff;
+  --surface: #ffffff;
+  --text-main: #0d1c2f;
+  --text-muted: rgba(13, 28, 47, 0.8);
+  --primary: #2845D6;
+  --primary-dark: #3A9AFF;
+  --border: rgba(13, 28, 47, 0.1);
+  --border-strong: rgba(13, 28, 47, 0.2);
+  --surface-container: #f8f9ff;
+  --surface-container-low: #f0f4ff;
+  --surface-container-lowest: #ffffff;
+}
+
+.dark {
+  --background: #0F172A;
+  --surface: #1E293B;
+  --text-main: #F8FAFC;
+  --text-muted: rgba(248, 250, 252, 0.8);
+  --text-second: #0d1c2f;
+  --primary: #3A9AFF;
+  --border: rgba(248, 250, 252, 0.1);
+  --border-strong: rgba(248, 250, 252, 0.2);
+  --surface-container: #1E293B;
+  --surface-container-low: #1E293B;
+  --surface-container-lowest: #1E293B;
+}
+
+/* ── Tailwind v4 theme via @theme ─────────────────────── */
+@theme inline {
+  /* Semantic tokens mapped from CSS variables */
+  --color-app-bg: var(--background);
+  --color-app-surface: var(--surface);
+  --color-app-main: var(--text-main);
+  --color-app-muted: var(--text-muted);
+  --color-app-primary: var(--primary);
+  --color-app-border: var(--border);
+  --color-app-border-strong: var(--border-strong);
+  --color-app-surface-container: var(--surface-container);
+  --color-app-surface-low: var(--surface-container-low);
+  --color-app-surface-lowest: var(--surface-container-lowest);
+
+  /* Utility colors — mapped for dark mode */
+  --color-primary: var(--primary);
+  --color-on-primary: #ffffff;
+  --color-secondary-container: var(--surface-container-low);
+  --color-on-secondary-container: var(--primary);
+  --color-outline-variant: var(--border-strong);
+  --color-on-surface: var(--text-main);
+  --color-on-surface-variant: var(--text-muted);
+}
+
+/* ── Dark mode utility overrides ───────────────────────── */
+.dark .bg-app-bg,
+.dark.bg-app-bg { background-color: var(--background); }
+.dark .bg-app-surface,
+.dark.bg-app-surface { background-color: var(--surface); }
+.dark .text-app-main,
+.dark.text-app-main { color: var(--text-main); }
+.dark .text-app-muted,
+.dark.text-app-muted { color: var(--text-muted); }
+.dark .bg-app-surface-container,
+.dark.bg-app-surface-container { background-color: var(--surface-container); }
+.dark .bg-app-surface-low,
+.dark.bg-app-surface-low { background-color: var(--surface-container-low); }
+.dark .bg-app-surface-lowest,
+.dark.bg-app-surface-lowest { background-color: var(--surface-container-lowest); }
+.dark .border-app-border,
+.dark.border-app-border { border-color: var(--border); }
+.dark .border-app-border-strong,
+.dark.border-app-border-strong { border-color: var(--border-strong); }
+.dark .text-app-primary,
+.dark.text-app-primary { color: var(--primary); }
+.dark .bg-app-primary,
+.dark.bg-app-primary { background-color: var(--primary); }
+
+/* ── Soft entrance animation ────────────────────────────── */
+@keyframes softEntrance {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Custom Scrollbar ─────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(13, 28, 47, 0.15);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(13, 28, 47, 0.25);
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(248, 250, 252, 0.15);
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(248, 250, 252, 0.25);
+}
+
+/* ── Body ─────────────────────────────────────────────── */
+body {
+  font-family: "Inter", sans-serif;
+  background: var(--background);
+  color: var(--text-main);
+  opacity: 0;
+  animation: softEntrance 500ms ease-out 0ms forwards;
+}
