@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuthStore } from "@/stores/authStore";
 import MaterialIcon from "../MaterialIcon";
@@ -14,6 +15,9 @@ export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { isAuthenticated, openLogoutModal } = useAuthStore();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
 
   return (
     <aside className="fixed left-0 top-0 h-screen w-64 border-r border-app-border-strong dark:border-app-border-strong bg-app-surface-low dark:bg-app-bg flex flex-col py-8 px-6 z-50">
@@ -49,7 +53,7 @@ export default function Sidebar() {
       </nav>
 
       {/* Logout */}
-      {isAuthenticated && (
+      {mounted && isAuthenticated && (
         <div className="pt-8 border-t border-app-border-strong dark:border-app-border-strong mt-auto">
           <button
             onClick={openLogoutModal}

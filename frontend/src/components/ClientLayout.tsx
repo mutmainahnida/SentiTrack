@@ -1,14 +1,24 @@
 "use client";
 
+import { useState } from "react";
 import { ThemeProvider } from "@/components/ThemeProvider";
-import { LoginModal, LogoutModal } from "@/components/Auth";
-import { ReactNode } from "react";
+import { LoginModal, LogoutModal, RegisterModal } from "@/components/Auth";
 
-export default function ClientLayout({ children }: { children: ReactNode }) {
+export default function ClientLayout({ children }: { children: React.ReactNode }) {
+  const [showRegister, setShowRegister] = useState(false);
+
   return (
     <ThemeProvider>
       {children}
-      <LoginModal />
+      {showRegister ? (
+        <RegisterModal
+          onSwitchToLogin={() => setShowRegister(false)}
+        />
+      ) : (
+        <LoginModal
+          onSwitchToRegister={() => setShowRegister(true)}
+        />
+      )}
       <LogoutModal />
     </ThemeProvider>
   );
