@@ -15,7 +15,11 @@ ENV NODE_ENV=production
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/docker-entrypoint.sh ./docker-entrypoint.sh
+RUN chmod +x docker-entrypoint.sh
+RUN chmod +x prisma 2>/dev/null || true
+RUN chmod +x node_modules/.bin/prisma 2>/dev/null || true
 COPY package.json ./
 
 EXPOSE 5000
-CMD ["npm", "run", "start:prod"]
+ENTRYPOINT ["./docker-entrypoint.sh"]
