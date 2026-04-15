@@ -8,8 +8,8 @@ async function bootstrap() {
 
   app.enableCors({
     origin: [
-      process.env.FRONTEND_URL ?? 'http://localhost:3001',
-      process.env.SCRAPER_BASE_URL ?? 'http://localhost:3000',
+      process.env.FRONTEND_URL ?? 'http://localhost:3000',
+      process.env.SCRAPER_BASE_URL ?? 'http://localhost:4000',
     ],
     credentials: true,
   });

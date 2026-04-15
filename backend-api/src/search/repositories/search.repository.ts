@@ -82,4 +82,45 @@ export class SearchRepository {
       },
     });
   }
+
+  async findAll(limit = 20, offset = 0) {
+    return this.prisma.searchJobHistory.findMany({
+      where: { status: JobStatus.COMPLETED },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      skip: offset,
+      select: {
+        jobId: true,
+        query: true,
+        product: true,
+        total: true,
+        status: true,
+        createdAt: true,
+        completedAt: true,
+      },
+    });
+  }
+
+  async findByJobId(jobId: string) {
+    return this.prisma.searchJobHistory.findUnique({
+      where: { jobId },
+      select: {
+        jobId: true,
+        query: true,
+        product: true,
+        total: true,
+        status: true,
+        createdAt: true,
+        completedAt: true,
+        errorMessage: true,
+        result: true,
+      },
+    });
+  }
+
+  async count() {
+    return this.prisma.searchJobHistory.count({
+      where: { status: JobStatus.COMPLETED },
+    });
+  }
 }

@@ -7,6 +7,19 @@ export interface SentimentJobData {
   limit: number;
 }
 
+export interface TweetSentimentData {
+  tweetId: string;
+  text: string;
+  username: string;
+  views: number;
+  likes: number;
+  retweets: number;
+  replies: number;
+  sentiment: 'positive' | 'negative' | 'neutral';
+  sentimentScore: number;
+  influenceScore: number;
+}
+
 export interface SentimentResult {
   query: string;
   total: number;
@@ -15,24 +28,7 @@ export interface SentimentResult {
     negative: number;
     neutral: number;
   };
-  topInfluential: {
-    tweetId: string;
-    text: string;
-    username: string;
-    influenceScore: number;
-    sentiment: 'positive' | 'negative' | 'neutral';
-  }[];
-  tweets: {
-    tweetId: string;
-    text: string;
-    username: string;
-    views: number;
-    likes: number;
-    retweets: number;
-    replies: number;
-    sentiment: 'positive' | 'negative' | 'neutral';
-    sentimentScore: number;
-    influenceScore: number;
-  }[];
+  topInfluential: TweetSentimentData[];
+  tweets: TweetSentimentData[];
   completedAt: string;
 }

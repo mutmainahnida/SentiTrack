@@ -108,4 +108,16 @@ export class SearchService {
       job.attemptsMade + 1,
     );
   }
+
+  async getHistory(limit = 20, offset = 0) {
+    const [items, total] = await Promise.all([
+      this.searchRepository.findAll(limit, offset),
+      this.searchRepository.count(),
+    ]);
+    return { items, total };
+  }
+
+  async getByJobId(jobId: string) {
+    return this.searchRepository.findByJobId(jobId);
+  }
 }

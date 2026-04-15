@@ -20,8 +20,13 @@ export class SentimentRepository {
         tweetId: tweet.tweetId,
         text: tweet.text,
         username: tweet.username,
-        influenceScore: tweet.influenceScore,
+        views: tweet.views,
+        likes: tweet.likes,
+        retweets: tweet.retweets,
+        replies: tweet.replies,
         sentiment: tweet.sentiment,
+        sentimentScore: tweet.sentimentScore,
+        influenceScore: tweet.influenceScore,
       })),
       tweets: result.tweets.map((tweet) => ({
         tweetId: tweet.tweetId,
@@ -108,6 +113,54 @@ export class SentimentRepository {
         errorMessage,
         completedAt: new Date(),
       },
+    });
+  }
+
+  async findAll(limit = 20, offset = 0) {
+    return this.prisma.sentimentJobHistory.findMany({
+      where: { status: JobStatus.COMPLETED },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      skip: offset,
+      select: {
+        jobId: true,
+        query: true,
+        product: true,
+        total: true,
+        positivePct: true,
+        negativePct: true,
+        neutralPct: true,
+        status: true,
+        createdAt: true,
+        completedAt: true,
+        result: true,
+      },
+    });
+  }
+
+  async findByJobId(jobId: string) {
+    return this.prisma.sentimentJobHistory.findUnique({
+      where: { jobId },
+      select: {
+        jobId: true,
+        query: true,
+        product: true,
+        total: true,
+        positivePct: true,
+        negativePct: true,
+        neutralPct: true,
+        status: true,
+        createdAt: true,
+        completedAt: true,
+        errorMessage: true,
+        result: true,
+      },
+    });
+  }
+
+  async count() {
+    return this.prisma.sentimentJobHistory.count({
+      where: { status: JobStatus.COMPLETED },
     });
   }
 }

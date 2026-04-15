@@ -120,6 +120,11 @@ export class SentimentService {
     const result = await this.geminiService.analyzeTweets(scraped.tweets);
     result.query = job.data.query;
 
+    // Guard against NaN from divide-by-zero when no tweets returned
+    if (result.total === 0) {
+      result.summary = { positive: 0, negative: 0, neutral: 100 };
+    }
+
     await this.sentimentRepository.markCompleted(
       job.data.jobId,
       result,

@@ -36,13 +36,7 @@ export interface SentimentResult {
     negative: number;
     neutral: number;
   };
-  topInfluential: {
-    tweetId: string;
-    text: string;
-    username: string;
-    influenceScore: number;
-    sentiment: 'positive' | 'negative' | 'neutral';
-  }[];
+  topInfluential: TweetSentiment[];
   tweets: TweetSentiment[];
   completedAt: string;
 }
@@ -151,14 +145,7 @@ Respond ONLY with the JSON array, no extra text.`;
 
     const topInfluential = [...analyzed]
       .sort((a, b) => b.influenceScore - a.influenceScore)
-      .slice(0, 10)
-      .map((t) => ({
-        tweetId: t.tweetId,
-        text: t.text,
-        username: t.username,
-        influenceScore: t.influenceScore,
-        sentiment: t.sentiment,
-      }));
+      .slice(0, 10);
 
     return {
       query: tweets[0] ? '[scraped_query]' : '',

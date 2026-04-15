@@ -4,12 +4,15 @@ import {
   ArgumentsHost,
   HttpException,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import { Response } from 'express';
 import { ApiResponseFactory } from '../api-response.util';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
+  private readonly logger = new Logger(AllExceptionsFilter.name);
+
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
@@ -26,8 +29,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
         exceptionResponse !== null &&
         'message' in exceptionResponse
       ) {
-        const resMessage = (exceptionResponse as any).message;
-        message = Array.isArray(resMessage) ? resMessage[0] : resMessage;
+        const resMessage = (exceptionResponse as Record<string, unknown>).message;
+        message = Array.isArray(resMessage) ? resMessage[0] : String(resMessage);
       } else {
         message = exception.message;
       }

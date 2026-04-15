@@ -97,7 +97,7 @@ export default function LandingPage() {
         {/* H1 */}
         <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight text-app-main dark:text-app-main mb-6">
           Analisis Sentimen Twitter{" "}
-          <span className="text-app-primary dark:text-app-primary">dalam 5 Detik</span>
+          <span className="text-app-primary dark:text-app-primary">kurang dari 1 menit</span>
         </h1>
 
         {/* Description */}

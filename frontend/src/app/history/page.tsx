@@ -1,293 +1,337 @@
 "use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import TopBar from "@/components/TopBar";
 import MaterialIcon from "@/components/MaterialIcon";
 import PageLayout from "@/components/PageLayout";
+import {
+  useSentimentHistory,
+  computeOverallScore,
+  computeAvgSentiment,
+  computePeakHour,
+} from "@/hooks/useSentimentHistory";
 
-const tableData = [
-  {
-    keyword: "Apple Vision Pro Review",
-    datetime: "14 April, 16:30",
-    overallScore: 84.2,
-    scoreLabel: "Positive",
-  },
-  {
-    keyword: "Global Market Inflation",
-    datetime: "14 April, 14:15",
-    overallScore: 32.1,
-    scoreLabel: "Negative",
-  },
-  {
-    keyword: "AI Regulation Trends 2024",
-    datetime: "13 April, 09:45",
-    overallScore: 58.9,
-    scoreLabel: "Mixed",
-  },
-  {
-    keyword: "Sustainable Tech Innovations",
-    datetime: "12 April, 11:20",
-    overallScore: 91.4,
-    scoreLabel: "Positive",
-  },
-];
+function formatDate(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleDateString("id-ID", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function formatTime(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleTimeString("id-ID", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
+function SentimentDots({ positive, negative, neutral }: { positive: number; negative: number; neutral: number }) {
+  return (
+    <div className="flex items-center justify-center gap-1.5">
+      <div className="flex gap-1">
+        <div
+          className="w-2.5 h-2.5 rounded-full bg-emerald-500"
+          title={`Positive: ${positive}%`}
+        />
+        <div
+          className="w-2.5 h-2.5 rounded-full bg-yellow-400"
+          title={`Neutral: ${neutral}%`}
+        />
+        <div
+          className="w-2.5 h-2.5 rounded-full bg-rose-500"
+          title={`Negative: ${negative}%`}
+        />
+      </div>
+      <span className="text-xs text-app-muted dark:text-app-muted">
+        {positive + negative + neutral > 0 ? `${positive}/${neutral}/${negative}` : "—"}
+      </span>
+    </div>
+  );
+}
+
+function ScoreBadge({ score }: { score: number }) {
+  const label =
+    score >= 70 ? "Positive" : score >= 40 ? "Mixed" : "Negative";
+  const cls =
+    score >= 70
+      ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/50"
+      : score >= 40
+      ? "bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-900/50"
+      : "bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-900/50";
+  return (
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-black border ${cls}`}>
+      {score}
+    </span>
+  );
+}
 
 export default function HistoryPage() {
+  const router = useRouter();
+  const { items, loading, error, page, totalPages, total, filter, setFilter, fetchHistory, setPage } =
+    useSentimentHistory();
+
+  useEffect(() => {
+    void fetchHistory(1);
+  }, [fetchHistory]);
+
+  const avgScore = computeAvgSentiment(items);
+  const peakHour = computePeakHour(items);
+
   return (
     <div className="flex h-screen overflow-hidden bg-app-bg dark:bg-app-bg">
-      {/* Fixed Sidebar */}
       <Sidebar />
-
-      {/* Main content area */}
       <PageLayout>
-      <div className="ml-64 flex-1 flex flex-col h-full overflow-hidden">
-        {/* Sticky TopBar */}
-        <TopBar />
+        <div className="ml-64 flex-1 flex flex-col h-full overflow-hidden">
+          <TopBar />
+          <div className="flex-1 flex flex-col overflow-y-auto">
+            <div className="flex-1 px-8 py-8 max-w-7xl mx-auto w-full flex flex-col gap-8">
 
-        {/* Scrollable content */}
-        <div className="flex-1 flex flex-col overflow-y-auto">
-          <div className="flex-1 px-8 py-8 max-w-7xl mx-auto w-full flex flex-col gap-8">
-
-            {/* ── Stats Bento ── */}
-            <section className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              {/* Card 1: Total Scans */}
-              <div className="bg-app-bg dark:bg-app-surface-low rounded-xl border border-app-border-strong dark:border-app-border-strong p-6 shadow-sm">
-                <p className="text-xs font-bold text-app-muted dark:text-app-muted uppercase tracking-wider mb-1">Total Scans</p>
-                <div className="flex items-end gap-2">
-                  <span className="text-3xl font-bold text-app-main dark:text-app-main">1,284</span>
-                  <span className="text-emerald-500 text-xs font-bold mb-1">+12%</span>
-                </div>
-              </div>
-
-              {/* Card 2: Avg. Sentiment */}
-              <div className="bg-app-bg dark:bg-app-surface-low rounded-xl border border-app-border-strong dark:border-app-border-strong p-6 shadow-sm">
-                <p className="text-xs font-bold text-app-muted dark:text-app-muted uppercase tracking-wider mb-1">Avg. Sentiment</p>
-                <div className="flex items-end gap-2">
-                  <span className="text-3xl font-bold text-app-main dark:text-app-main">72.4</span>
-                  <div className="flex gap-1 mb-2">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                    <span className="w-2 h-2 rounded-full bg-app-surface-lowest dark:bg-app-surface-container" />
-                    <span className="w-2 h-2 rounded-full bg-app-surface-lowest dark:bg-app-surface-container" />
+              {/* Stats Bento */}
+              <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Total Scans */}
+                <div className="bg-app-bg dark:bg-app-surface-low rounded-xl border border-app-border-strong dark:border-app-border-strong p-6 shadow-sm">
+                  <p className="text-xs font-bold text-app-muted dark:text-app-muted uppercase tracking-wider mb-1">Total Scans</p>
+                  <div className="flex items-end gap-2">
+                    <span className="text-3xl font-bold text-app-main dark:text-app-main">{total.toLocaleString()}</span>
+                    <span className="text-emerald-500 text-xs font-bold mb-1">analisis</span>
                   </div>
                 </div>
-              </div>
 
-              {/* Card 3: Peak Hour */}
-              <div className="bg-app-bg dark:bg-app-surface-low rounded-xl border border-app-border-strong dark:border-app-border-strong p-6 shadow-sm">
-                <p className="text-xs font-bold text-app-muted dark:text-app-muted uppercase tracking-wider mb-1">Peak Hour</p>
-                <div className="flex items-end gap-2">
-                  <span className="text-3xl font-bold text-app-main dark:text-app-main">14:00</span>
-                  <span className="text-app-muted dark:text-app-muted text-xs font-bold mb-1">UTC</span>
+                {/* Avg. Sentiment */}
+                <div className="bg-app-bg dark:bg-app-surface-low rounded-xl border border-app-border-strong dark:border-app-border-strong p-6 shadow-sm">
+                  <p className="text-xs font-bold text-app-muted dark:text-app-muted uppercase tracking-wider mb-1">Avg. Overall Score</p>
+                  <div className="flex items-end gap-2">
+                    <span className="text-3xl font-bold text-app-main dark:text-app-main">{avgScore}</span>
+                    <span className="text-app-muted text-xs font-bold mb-1">/ 100</span>
+                  </div>
+                  {avgScore > 0 && (
+                    <div className="mt-3 h-1.5 bg-app-surface-low dark:bg-app-surface-lowest rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full"
+                        style={{
+                          width: `${avgScore}%`,
+                          backgroundColor:
+                            avgScore >= 70 ? "#22c55e" : avgScore >= 40 ? "#3b82f6" : "#f87171",
+                        }}
+                      />
+                    </div>
+                  )}
                 </div>
-              </div>
 
-              {/* Card 4: Active Credits */}
-              <div className="bg-app-primary dark:bg-app-primary rounded-xl border border-app-primary dark:border-app-primary p-6 shadow-lg shadow-app-primary/10 dark:shadow-app-primary/10 text-white">
-                <div className="flex items-center justify-between mb-1">
-                  <p className="text-xs font-bold text-white/80 uppercase tracking-wider">Active Credits</p>
-                  <MaterialIcon name="bolt" className="text-lg text-white/80" />
+                {/* Peak Hour */}
+                <div className="bg-app-bg dark:bg-app-surface-low rounded-xl border border-app-border-strong dark:border-app-border-strong p-6 shadow-sm">
+                  <p className="text-xs font-bold text-app-muted dark:text-app-muted uppercase tracking-wider mb-1">Peak Hour (WIB)</p>
+                  <div className="flex items-end gap-2">
+                    <span className="text-3xl font-bold text-app-main dark:text-app-main">{peakHour}</span>
+                    <span className="text-app-muted text-xs font-bold mb-1">UTC+7</span>
+                  </div>
                 </div>
-                <div className="flex items-end gap-2">
-                  <span className="text-3xl font-bold text-white">4,150</span>
-                </div>
-                <p className="text-sm text-white/60 mt-1">Available</p>
-              </div>
-            </section>
+              </section>
 
-            {/* ── Search History Table ── */}
-            <section className="bg-app-bg dark:bg-app-surface-low rounded-xl border border-app-border-strong dark:border-app-border-strong shadow-sm overflow-hidden">
-              {/* Table header controls */}
-              <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-100 dark:border-app-border-strong">
-                <div className="relative w-72">
-                  <MaterialIcon
-                    name="search"
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-app-muted text-lg"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Filter history..."
-                    className="w-full h-9 pl-9 pr-4 rounded-lg bg-app-surface-low dark:bg-app-surface-low border border-app-border-strong dark:border-app-border-strong text-app-main dark:text-app-main placeholder:text-app-muted dark:placeholder:text-app-muted focus:outline-none focus:ring-2 focus:ring-app-primary/20 dark:focus:ring-app-primary/20 focus:border-app-primary dark:focus:border-app-primary"
-                  />
+              {/* Search History Table */}
+              <section className="bg-app-bg dark:bg-app-surface-low rounded-xl border border-app-border-strong dark:border-app-border-strong shadow-sm overflow-hidden flex-1">
+                {/* Table header controls */}
+                <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-100 dark:border-app-border-strong">
+                  <div className="relative w-72">
+                    <MaterialIcon
+                      name="search"
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-app-muted text-lg"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Filter riwayat..."
+                      value={filter}
+                      onChange={(e) => setFilter(e.target.value)}
+                      className="w-full h-9 pl-9 pr-4 rounded-lg bg-app-surface-low dark:bg-app-surface-low border border-app-border-strong dark:border-app-border-strong text-app-main dark:text-app-main placeholder:text-app-muted dark:placeholder:text-app-muted focus:outline-none focus:ring-2 focus:ring-app-primary/20 dark:focus:ring-app-primary/20 focus:border-app-primary dark:focus:border-app-primary"
+                    />
+                  </div>
+                  <button className="flex items-center gap-1.5 h-9 px-3 rounded-lg bg-app-bg dark:bg-app-surface-low border border-app-border-strong dark:border-app-border-strong text-app-main dark:text-app-main hover:bg-app-surface-low dark:hover:bg-app-surface-low transition-colors text-sm">
+                    <MaterialIcon name="download" className="text-base" />
+                    Export CSV
+                  </button>
                 </div>
-                <button className="flex items-center gap-1.5 h-9 px-3 rounded-lg bg-app-bg dark:bg-app-surface-low border border-app-border-strong dark:border-app-border-strong text-app-main dark:text-app-main hover:bg-app-surface-low dark:hover:bg-app-surface-low transition-colors">
-                  <MaterialIcon name="filter_list" className="text-base" />
-                  Filter
-                </button>
-                <button className="flex items-center gap-1.5 h-9 px-3 rounded-lg bg-app-bg dark:bg-app-surface-low border border-app-border-strong dark:border-app-border-strong text-app-main dark:text-app-main hover:bg-app-surface-low dark:hover:bg-app-surface-low transition-colors">
-                  <MaterialIcon name="download" className="text-base" />
-                  Export CSV
-                </button>
-              </div>
 
-              {/* Table */}
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-app-surface-low/50 dark:bg-app-surface-low border-b border-app-border-strong dark:border-app-border-strong">
-                      <th className="text-left px-6 py-3 text-xs font-bold text-app-muted dark:text-app-muted uppercase tracking-wide">
-                        Keyword
-                      </th>
-                      <th className="text-left px-6 py-3 text-xs font-bold text-app-muted dark:text-app-muted uppercase tracking-wide">
-                        Date / Time
-                      </th>
-                      <th className="text-center px-6 py-3 text-xs font-bold text-app-muted dark:text-app-muted uppercase tracking-wide">
-                        Sentiment Mix
-                      </th>
-                      <th className="text-center px-6 py-3 text-xs font-bold text-app-muted dark:text-app-muted uppercase tracking-wide">
-                        Overall Score
-                      </th>
-                      <th className="text-center px-6 py-3 text-xs font-bold text-app-muted dark:text-app-muted uppercase tracking-wide">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-app-surface-container">
-                    {tableData.map((row, i) => (
-                      <tr
-                        key={i}
-                        className="hover:bg-app-surface-low/80 dark:hover:bg-app-surface-low transition-colors group"
+                {/* Table */}
+                <div className="overflow-x-auto">
+                  {loading ? (
+                    <div className="flex items-center justify-center py-16">
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="w-8 h-8 border-2 border-app-primary border-t-transparent rounded-full animate-spin" />
+                        <p className="text-sm text-app-muted dark:text-app-muted">Memuat riwayat...</p>
+                      </div>
+                    </div>
+                  ) : error ? (
+                    <div className="flex flex-col items-center justify-center py-16 gap-4">
+                      <MaterialIcon name="error_outline" className="text-4xl text-red-500" />
+                      <p className="text-sm text-app-muted dark:text-app-muted">{error}</p>
+                      <button
+                        onClick={() => void fetchHistory(page)}
+                        className="px-4 py-2 bg-app-primary text-white text-sm font-bold rounded-lg hover:opacity-90"
                       >
-                        <td className="px-6 py-5">
-                          <span className="text-sm font-bold text-app-main dark:text-app-main tracking-tight">{row.keyword}</span>
-                        </td>
-                        <td className="px-6 py-5">
-                          <span className="text-sm text-app-muted dark:text-app-muted font-medium">{row.datetime}</span>
-                        </td>
-                        <td className="px-6 py-5">
-                          <div className="flex items-center justify-center gap-1.5">
-                            <div className="flex gap-1">
-                              <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                              <div className="w-2.5 h-2.5 rounded-full bg-app-primary dark:bg-app-surface-container" />
-                              <div className="w-2.5 h-2.5 rounded-full bg-rose-500" />
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-5">
-                          <div className="flex items-center justify-center gap-1.5">
-                          <span
-                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-black border ${
-                              row.scoreLabel === "Positive"
-                                ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/50"
-                                : row.scoreLabel === "Negative"
-                                ? "bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-900/50"
-                                : "bg-blue-50 dark:bg-app-primary/20 text-blue-600 dark:text-app-primary border-blue-100 dark:border-app-primary/30"
+                        Coba Lagi
+                      </button>
+                    </div>
+                  ) : items.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16 gap-3">
+                      <MaterialIcon name="history" className="text-5xl text-app-muted dark:text-app-muted opacity-40" />
+                      <p className="text-sm text-app-muted dark:text-app-muted">
+                        {filter ? "Tidak ada hasil untuk filter tersebut." : "Belum ada riwayat analisis."}
+                      </p>
+                      {!filter && (
+                        <button
+                          onClick={() => router.push("/dashboard")}
+                          className="mt-2 px-4 py-2 bg-app-primary text-white text-sm font-bold rounded-lg hover:opacity-90"
+                        >
+                          Mulai Analisis
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <table className="w-full">
+                      <thead>
+                        <tr className="bg-app-surface-low/50 dark:bg-app-surface-low border-b border-app-border-strong dark:border-app-border-strong">
+                          <th className="text-left px-6 py-3 text-xs font-bold text-app-muted dark:text-app-muted uppercase tracking-wide">Keyword</th>
+                          <th className="text-left px-6 py-3 text-xs font-bold text-app-muted dark:text-app-muted uppercase tracking-wide">Tanggal / Waktu</th>
+                          <th className="text-center px-6 py-3 text-xs font-bold text-app-muted dark:text-app-muted uppercase tracking-wide">Sentiment Mix (%)</th>
+                          <th className="text-center px-6 py-3 text-xs font-bold text-app-muted dark:text-app-muted uppercase tracking-wide">Overall Score</th>
+                          <th className="text-center px-6 py-3 text-xs font-bold text-app-muted dark:text-app-muted uppercase tracking-wide">Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-app-surface-container">
+                        {items.map((item) => {
+                          const score = computeOverallScore(item.positivePct, item.negativePct, item.neutralPct);
+                          return (
+                            <tr
+                              key={item.jobId}
+                              className="hover:bg-app-surface-low/80 dark:hover:bg-app-surface-low transition-colors group"
+                            >
+                              <td className="px-6 py-5">
+                                <button
+                                  onClick={() => router.push(`/search?q=${encodeURIComponent(item.query)}`)}
+                                  className="text-sm font-bold text-app-main dark:text-app-main hover:text-app-primary dark:hover:text-app-primary transition-colors text-left"
+                                >
+                                  {item.query}
+                                </button>
+                              </td>
+                              <td className="px-6 py-5">
+                                <div className="text-sm text-app-muted dark:text-app-muted font-medium">
+                                  {formatDate(item.createdAt)}
+                                </div>
+                                <div className="text-xs text-app-muted dark:text-app-muted opacity-70">
+                                  {formatTime(item.createdAt)}
+                                </div>
+                              </td>
+                              <td className="px-6 py-5">
+                                <SentimentDots
+                                  positive={item.positivePct}
+                                  negative={item.negativePct}
+                                  neutral={item.neutralPct}
+                                />
+                              </td>
+                              <td className="px-6 py-5">
+                                <div className="flex items-center justify-center">
+                                  <ScoreBadge score={score} />
+                                </div>
+                              </td>
+                              <td className="px-6 py-5">
+                                <div className="flex items-center justify-center gap-1 transition-opacity">
+                                  <button
+                                    onClick={() => router.push(`/search?q=${encodeURIComponent(item.query)}`)}
+                                    className="p-1.5 rounded-md text-app-muted dark:text-app-muted hover:text-app-primary dark:hover:text-app-primary hover:bg-app-surface-low dark:hover:bg-app-surface-low transition-colors"
+                                    title="Lihat"
+                                  >
+                                    <MaterialIcon name="visibility" className="text-base" />
+                                  </button>
+                                  <button
+                                    onClick={() => router.push(`/search?q=${encodeURIComponent(item.query)}`)}
+                                    className="p-1.5 rounded-md text-app-muted dark:text-app-muted hover:text-app-primary dark:hover:text-app-primary hover:bg-app-surface-low dark:hover:bg-app-surface-low transition-colors"
+                                    title="Analisis Ulang"
+                                  >
+                                    <MaterialIcon name="refresh" className="text-base" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+
+                {/* Pagination footer */}
+                {!loading && items.length > 0 && (
+                  <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 dark:border-app-border-strong">
+                    <p className="text-xs text-app-muted dark:text-app-muted">
+                      Halaman {page} dari {totalPages} &nbsp;·&nbsp; {total.toLocaleString()} hasil
+                    </p>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => {
+                          if (page > 1) void fetchHistory(page - 1);
+                        }}
+                        disabled={page <= 1}
+                        className="w-8 h-8 flex items-center justify-center rounded-md border border-app-border-strong dark:border-app-border-strong text-app-muted dark:text-app-muted hover:bg-app-primary hover:text-app-surface dark:hover:bg-app-primary transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        <MaterialIcon name="chevron_left" className="text-base" />
+                      </button>
+                      {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                        let pageNum: number;
+                        if (totalPages <= 5) {
+                          pageNum = i + 1;
+                        } else if (page <= 3) {
+                          pageNum = i + 1;
+                        } else if (page >= totalPages - 2) {
+                          pageNum = totalPages - 4 + i;
+                        } else {
+                          pageNum = page - 2 + i;
+                        }
+                        return (
+                          <button
+                            key={pageNum}
+                            onClick={() => void fetchHistory(pageNum)}
+                            className={`w-8 h-8 flex items-center justify-center rounded-md text-sm font-medium transition-colors ${
+                              page === pageNum
+                                ? "bg-app-primary dark:bg-app-primary text-white"
+                                : "border border-app-border-strong dark:border-app-border-strong text-app-muted dark:text-app-muted hover:bg-app-primary hover:text-app-surface dark:hover:bg-app-primary"
                             }`}
                           >
-                            {row.overallScore}
-                          </span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-5">
-                          <div className="flex items-center justify-center gap-1 transition-opacity">
-                            <button className="p-1.5 rounded-md text-app-muted dark:text-app-muted hover:text-app-primary dark:hover:text-app-primary hover:bg-app-surface-low dark:hover:bg-app-surface-low transition-colors" title="View">
-                              <MaterialIcon name="visibility" className="text-base" />
-                            </button>
-                            <button className="p-1.5 rounded-md text-app-muted dark:text-app-muted hover:text-app-primary dark:hover:text-app-primary hover:bg-app-surface-low dark:hover:bg-app-surface-low transition-colors" title="Download">
-                              <MaterialIcon name="download" className="text-base" />
-                            </button>
-                            <button className="p-1.5 rounded-md text-app-muted dark:text-app-muted hover:text-app-primary dark:hover:text-app-primary hover:bg-app-surface-low dark:hover:bg-app-surface-low transition-colors" title="Delete">
-                              <MaterialIcon name="delete" className="text-base" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                            {pageNum}
+                          </button>
+                        );
+                      })}
+                      <button
+                        onClick={() => {
+                          if (page < totalPages) void fetchHistory(page + 1);
+                        }}
+                        disabled={page >= totalPages}
+                        className="w-8 h-8 flex items-center justify-center rounded-md border border-app-border-strong dark:border-app-border-strong text-app-muted dark:text-app-muted hover:bg-app-primary hover:text-app-surface dark:hover:bg-app-primary transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        <MaterialIcon name="chevron_right" className="text-base" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </section>
 
-              {/* Pagination footer */}
-              <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 dark:border-app-border-strong">
-                <p className="text-xs text-app-muted dark:text-app-muted">
-                  Showing 1 to 4 of 1,284 results
-                </p>
-                <div className="flex items-center gap-1">
-                  <button className="w-8 h-8 flex items-center justify-center rounded-md border border-app-border-strong dark:border-app-border-strong text-app-muted dark:text-app-muted hover:bg-app-primary hover:text-app-surface dark:hover:bg-app-primary transition-colors">
-                    <MaterialIcon name="chevron_left" className="text-base" />
-                  </button>
-                  <button className="w-8 h-8 flex items-center justify-center rounded-md bg-app-primary dark:bg-app-primary text-white text-sm font-medium">
-                    1
-                  </button>
-                  <button className="w-8 h-8 flex items-center justify-center rounded-md border border-app-border-strong dark:border-app-border-strong text-app-muted dark:text-app-muted text-sm hover:bg-app-primary hover:text-app-surface dark:hover:bg-app-primary transition-colors">
-                    2
-                  </button>
-                  <button className="w-8 h-8 flex items-center justify-center rounded-md border border-app-border-strong dark:border-app-border-strong text-app-muted dark:text-app-muted text-sm hover:bg-app-primary hover:text-app-surface dark:hover:bg-app-primary transition-colors">
-                    3
-                  </button>
-                  <span className="px-1 text-app-muted dark:text-app-muted">…</span>
-                  <button className="w-8 h-8 flex items-center justify-center rounded-md border border-app-border-strong dark:border-app-border-strong text-app-muted dark:text-app-muted text-sm hover:bg-app-primary hover:text-app-surface dark:hover:bg-app-primary transition-colors">
-                    128
-                  </button>
-                  <button className="w-8 h-8 flex items-center justify-center rounded-md border border-app-border-strong dark:border-app-border-strong text-app-muted dark:text-app-muted hover:bg-app-primary hover:text-app-surface dark:hover:bg-app-primary transition-colors">
-                    <MaterialIcon name="chevron_right" className="text-base" />
-                  </button>
+              {/* Footer */}
+              <footer className="mt-auto pt-6 pb-2 flex justify-between text-[10px] uppercase tracking-widest font-bold text-app-muted dark:text-app-muted border-t border-app-border-strong dark:border-app-border-strong">
+                <span>© 2026 SentiTrack</span>
+                <div className="flex gap-6">
+                  <a href="#" className="hover:text-app-primary dark:hover:text-app-primary transition-colors">System Status</a>
+                  <a href="#" className="hover:text-app-primary dark:hover:text-app-primary transition-colors">Privacy Protocol</a>
+                  <a href="#" className="hover:text-app-primary dark:hover:text-app-primary transition-colors">Security Center</a>
                 </div>
-              </div>
-            </section>
-
-            {/* ── Contextual Insight Cards ── */}
-            <section className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* Card 1: Automated Monthly Reports */}
-              <div className="bg-app-surface-low dark:bg-app-surface-low rounded-xl p-8 border border-app-border-strong dark:border-app-border-strong relative overflow-hidden">
-                <div className="relative z-10">
-                  <p className="text-xs font-semibold text-app-muted dark:text-app-muted uppercase tracking-widest mb-2">
-                    Automation
-                  </p>
-                  <h3 className="text-xl font-bold text-app-main dark:text-app-main mb-2">
-                    Automated Monthly Reports
-                  </h3>
-                  <p className="text-sm text-app-muted dark:text-app-muted mb-6 leading-relaxed">
-                    Get comprehensive sentiment analysis delivered to your inbox every month.
-                    Stay ahead with zero manual effort — schedule, customize, and share reports
-                    with your team instantly.
-                  </p>
-                  <button className="bg-app-primary dark:bg-app-primary text-white text-sm font-medium px-5 py-2.5 rounded-lg hover:opacity-90 transition-opacity">
-                    Configure Email Alerts
-                  </button>
-                </div>
-                <MaterialIcon
-                  name="mail"
-                  className="absolute bottom-4 right-4 text-[80px] text-app-main dark:text-app-main opacity-[0.07] z-0 select-none pointer-events-none"
-                />
-              </div>
-
-              {/* Card 2: API Integration Now Live */}
-              <div className="bg-app-primary dark:bg-app-primary text-white rounded-xl p-8 relative overflow-hidden">
-                <div className="relative z-10">
-                  <p className="text-xs font-semibold text-white/70 uppercase tracking-widest mb-2">
-                    Developers
-                  </p>
-                  <h3 className="text-xl font-bold text-white mb-2">
-                    API Integration Now Live
-                  </h3>
-                  <p className="text-sm text-white/80 mb-6 leading-relaxed">
-                    Build with SentiTrack. Our REST API gives you programmatic access to
-                    sentiment analysis, historical data, and real-time tracking — with generous
-                    rate limits for all plans.
-                  </p>
-                  <button className="bg-white dark:bg-white text-app-primary dark:text-app-primary text-sm font-semibold px-5 py-2.5 rounded-lg hover:bg-white/90 dark:hover:bg-white/90 transition-colors">
-                    Read Documentation
-                  </button>
-                </div>
-                <MaterialIcon
-                  name="code"
-                  className="absolute bottom-4 right-4 text-[80px] text-white opacity-[0.10] z-0 select-none pointer-events-none"
-                />
-              </div>
-            </section>
-
-            {/* ── Page Footer ── */}
-            <footer className="mt-auto pt-6 pb-2 flex justify-between text-[10px] uppercase tracking-widest font-bold text-app-muted dark:text-app-muted border-t border-app-border-strong dark:border-app-border-strong">
-              <span>© 2024 SentiTrack Intelligence Platform</span>
-              <div className="flex gap-6">
-                <a href="#" className="hover:text-app-primary dark:hover:text-app-primary transition-colors">System Status</a>
-                <a href="#" className="hover:text-app-primary dark:hover:text-app-primary transition-colors">Privacy Protocol</a>
-                <a href="#" className="hover:text-app-primary dark:hover:text-app-primary transition-colors">Security Center</a>
-              </div>
-            </footer>
+              </footer>
+            </div>
           </div>
         </div>
-      </div>
       </PageLayout>
     </div>
   );

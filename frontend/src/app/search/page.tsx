@@ -20,36 +20,14 @@ const SENTIMENT_COLORS: Record<string, { bg: string; text: string; border: strin
   negative: { bg: "bg-red-50 dark:bg-red-900/40", text: "text-red-700 dark:text-red-400", border: "border-red-200 dark:border-red-800/50" },
 };
 
-const MEDIA_ICONS: Record<string, string> = {
-  photo: "image",
-  video: "videocam",
-  gif: "gif_box",
-};
-
-function getTimeAgo(ts: number): string {
-  // ts from hook is already in milliseconds
-  const diff = Date.now() - ts;
-  const mins = Math.floor(diff / 60000);
-  if (mins < 60) return `${Math.max(0, mins)}m`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${Math.max(0, hrs)}h`;
-  const days = Math.floor(hrs / 24);
-  if (days < 7) return `${Math.max(0, days)}d`;
-  const weeks = Math.floor(days / 7);
-  if (weeks < 4) return `${Math.max(0, weeks)}w`;
-  return `${Math.max(0, Math.floor(days / 30))}mo`;
-}
-
 function formatNumber(n: number): string {
   if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
   if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
   return String(n);
 }
 
-function TweetCard({ tweet, index, sentiment }: { tweet: ScrapedTweet; index: number; sentiment: "positive" | "neutral" | "negative" }) {
+function TweetCard({ tweet, sentiment }: { tweet: ScrapedTweet; sentiment: "positive" | "neutral" | "negative" }) {
   const colors = SENTIMENT_COLORS[sentiment];
-  // timestamp from hook is already in milliseconds
-  const timeAgo = tweet.timestamp > 0 ? getTimeAgo(tweet.timestamp) : getTimeAgo(Date.now() - index * 3600000);
 
   return (
     <article className="bg-app-bg dark:bg-app-surface-low border border-app-border/20 dark:border-app-border/20 rounded-xl p-6 shadow-sm hover:border-app-primary/30 transition-colors">
@@ -62,29 +40,28 @@ function TweetCard({ tweet, index, sentiment }: { tweet: ScrapedTweet; index: nu
           <div className="flex flex-wrap items-center gap-2 mb-1">
             <span className="font-bold text-app-main dark:text-app-main">{tweet.name}</span>
             <span className="text-app-muted dark:text-app-muted">@{tweet.username}</span>
-            <span className="text-app-muted text-xs">· {timeAgo}</span>
             <span className={`ml-auto inline-flex items-center gap-1 border rounded-full px-2.5 py-0.5 text-xs font-semibold ${colors.bg} ${colors.text} ${colors.border}`}>
               <MaterialIcon name={SENTIMENT_ICONS[sentiment]} />
               {sentiment.charAt(0).toUpperCase() + sentiment.slice(1)}
             </span>
           </div>
           <div className="flex flex-wrap items-center gap-2 text-xs text-app-muted dark:text-app-muted">
-            {tweet.isRetweet && <span className="flex items-center gap-0.5"><MaterialIcon name="repeat" className="text-[10px]" /> Retweet</span>}
-            {tweet.isReply && <span className="flex items-center gap-0.5"><MaterialIcon name="reply" className="text-[10px]" /> Reply</span>}
+            {tweet.sentimentScore > 0 && (
+              <span className="flex items-center gap-0.5">
+                <MaterialIcon name="thumb_up" className="text-[10px]" />
+                {tweet.sentimentScore > 0 ? `+${tweet.sentimentScore}` : tweet.sentimentScore}
+              </span>
+            )}
+            <span className="flex items-center gap-0.5">
+              <MaterialIcon name="insights" className="text-[10px]" />
+              Influence: {formatNumber(tweet.influenceScore)}
+            </span>
           </div>
         </div>
       </div>
 
       {/* Tweet Text */}
       <p className="text-app-main dark:text-app-main mb-4 leading-relaxed">{tweet.text}</p>
-
-      {/* Media indicator */}
-      {tweet.hasMedia && tweet.mediaType && (
-        <div className="mb-4 flex items-center gap-1.5 text-app-muted dark:text-app-muted text-xs">
-          <MaterialIcon name={MEDIA_ICONS[tweet.mediaType]} className="text-sm" />
-          <span>{tweet.mediaType === "gif" ? "GIF" : tweet.mediaType === "video" ? "Video" : "Photo"} attached</span>
-        </div>
-      )}
 
       {/* Stats Row */}
       <div className="flex items-center gap-1 text-app-muted dark:text-app-muted text-sm border-t border-app-border/10 dark:border-app-border/10 pt-3">
@@ -101,7 +78,7 @@ function TweetCard({ tweet, index, sentiment }: { tweet: ScrapedTweet; index: nu
           <MaterialIcon name="visibility" className="text-base" /><span>{formatNumber(tweet.views)}</span>
         </button>
         <a
-          href={tweet.permanentUrl}
+          href={`https://x.com/i/status/${tweet.tweetId}`}
           target="_blank"
           rel="noopener noreferrer"
           className="ml-auto flex items-center gap-1.5 hover:text-app-primary transition-colors px-2 py-1 rounded hover:bg-app-surface-low"
@@ -167,12 +144,10 @@ function MetricsCard({ label, value, pct, color, count }: { label: string; value
   );
 }
 
-function AnalysisResults({ result, onAnalyze }: { result: { score: number; positive: number; neutral: number; negative: number; total: number; topKeywords: string[]; tweets: ScrapedTweet[]; query: string }; onAnalyze: (q: string) => void }) {
+function AnalysisResults({ result, onAnalyze }: { result: { score: number; positive: number; neutral: number; negative: number; total: number; topKeywords: string[]; tweets: ScrapedTweet[]; topInfluential: ScrapedTweet[]; query: string }; onAnalyze: (q: string) => void }) {
   const scoreLabel = result.score >= 70 ? "High Sentiment" : result.score >= 40 ? "Mixed Sentiment" : "Low Sentiment";
   const scoreIcon = result.score >= 70 ? "sentiment_satisfied" : result.score >= 40 ? "sentiment_neutral" : "sentiment_dissatisfied";
   const scoreColorClass = result.score >= 70 ? "bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400" : result.score >= 40 ? "bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-400" : "bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400";
-
-  // Sentiment is now attached to each tweet from real per-tweet analysis
 
   return (
     <>
@@ -208,15 +183,35 @@ function AnalysisResults({ result, onAnalyze }: { result: { score: number; posit
       {/* Main Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
         <div className="lg:col-span-8 space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-app-main dark:text-app-main">
-              Recent Mentions
-              <span className="ml-2 text-sm font-normal text-app-muted">({result.tweets.length} tweets)</span>
+          {/* Top Influential */}
+          <div>
+            <h2 className="text-xl font-bold text-app-main dark:text-app-main mb-1">
+              Top Influential Tweets
             </h2>
+            <p className="text-sm text-app-muted dark:text-app-muted mb-4">
+              Highest reach and engagement tweets for "{result.query}"
+            </p>
+            <div className="space-y-4">
+              {result.topInfluential.map((tweet) => (
+                <TweetCard key={tweet.tweetId} tweet={tweet} sentiment={tweet.sentiment} />
+              ))}
+            </div>
           </div>
-          {result.tweets.map((tweet, i) => (
-            <TweetCard key={tweet.id} tweet={tweet} index={i} sentiment={tweet.sentiment} />
-          ))}
+
+          {/* All Tweets */}
+          {result.tweets.length > result.topInfluential.length && (
+            <div className="mt-8">
+              <h2 className="text-xl font-bold text-app-main dark:text-app-main mb-1">
+                All Analyzed Tweets
+                <span className="ml-2 text-sm font-normal text-app-muted">({result.tweets.length} tweets)</span>
+              </h2>
+              <div className="space-y-4 mt-4">
+                {result.tweets.slice(result.topInfluential.length).map((tweet) => (
+                  <TweetCard key={tweet.tweetId} tweet={tweet} sentiment={tweet.sentiment} />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="lg:col-span-4 space-y-8">
