@@ -6,6 +6,8 @@ COPY prisma ./prisma
 RUN npx prisma generate
 COPY . .
 RUN npm run build
+# Compile seed.ts to dist/prisma/ for runtime use
+RUN npx tsc prisma/seed.ts --outDir dist/prisma --module commonjs --target es2020 --esModuleInterop --skipLibCheck
 RUN npm ci --omit=dev && npm cache clean --force
 
 FROM node:20-alpine
@@ -15,11 +17,11 @@ ENV NODE_ENV=production
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/docker-entrypoint.sh ./docker-entrypoint.sh
-RUN chmod +x docker-entrypoint.sh
-RUN chmod +x prisma 2>/dev/null || true
-RUN chmod +x node_modules/.bin/prisma 2>/dev/null || true
 COPY package.json ./
+COPY docker-entrypoint.sh ./
+
+RUN chmod +x docker-entrypoint.sh
+RUN chmod +x node_modules/.bin/prisma
 
 EXPOSE 5000
 ENTRYPOINT ["./docker-entrypoint.sh"]

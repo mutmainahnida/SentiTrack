@@ -77,11 +77,12 @@ services:
       context: ./frontend
     container_name: sentitrack-frontend
     ports:
-      - "3000:3000"
+      - "3001:3000"
     env_file:
       - .env
     environment:
       - PORT=3000
+      - NEXT_PUBLIC_API_URL=http://localhost:5000
     depends_on:
       - backend-api
 
