@@ -7,13 +7,18 @@ import {
   HttpStatus,
   Post,
   Query,
+  UseGuards,
 } from '@nestjs/common';
+import { ApiResponseFactory } from '../../common/api-response.util';
 import { JobRequestFailedError } from '../../common/errors/job-request-failed.error';
 import { JobRequestTimeoutError } from '../../common/errors/job-request-timeout.error';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import type { CreateSentimentDto } from '../dto/create-sentiment.dto';
 import { SentimentService } from '../services/sentiment.service';
+import type { SentimentResult } from '../../queue/interfaces/sentiment-job.interface';
 
 @Controller('api/sentiment')
+@UseGuards(JwtAuthGuard)
 export class SentimentController {
   constructor(private readonly sentimentService: SentimentService) {}
 
@@ -56,7 +61,8 @@ export class SentimentController {
 
   private async handleRequest(dto: CreateSentimentDto) {
     try {
-      return await this.sentimentService.requestSentiment(dto);
+      const result = await this.sentimentService.requestSentiment(dto);
+      return ApiResponseFactory.success('Sentiment analysis completed', result);
     } catch (err: unknown) {
       if (err instanceof JobRequestTimeoutError) {
         throw new HttpException(

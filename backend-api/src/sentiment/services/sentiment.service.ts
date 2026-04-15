@@ -83,6 +83,31 @@ export class SentimentService {
       job.data.limit,
     );
 
+    if (scraped.tweets.length === 0) {
+      this.logger.warn(
+        `Sentiment job ${job.data.jobId}: scraper returned 0 tweets for query "${job.data.query}". Marking as completed with empty result.`,
+      );
+      const emptyResult: SentimentResult = {
+        query: job.data.query,
+        total: 0,
+        summary: { positive: 0, negative: 0, neutral: 100 },
+        topInfluential: [],
+        tweets: [],
+        completedAt: new Date().toISOString(),
+      };
+      await this.sentimentRepository.markCompleted(
+        job.data.jobId,
+        emptyResult,
+        attempts,
+      );
+      await this.queueService.storeResult(
+        QUEUE_NAMES.SENTIMENT,
+        job.data.jobId,
+        emptyResult,
+      );
+      return;
+    }
+
     const result = await this.geminiService.analyzeTweets(scraped.tweets);
     result.query = job.data.query;
 
