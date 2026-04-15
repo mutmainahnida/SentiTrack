@@ -153,4 +153,8 @@ export class SentimentService {
   async getHistory(userId: string, isAdmin: boolean) {
     return this.sentimentRepository.findHistory(userId, isAdmin);
   }
+
+  async getByJobId(jobId: string) {
+    return this.sentimentRepository.findByJobId(jobId);
+  }
 }

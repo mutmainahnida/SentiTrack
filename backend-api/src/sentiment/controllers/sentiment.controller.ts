@@ -42,26 +42,7 @@ export class SentimentController {
     @Query('product') product?: string,
     @Query('limit') limit?: string,
     @Query('jobId') jobId?: string,
-    @Query('page') page?: string,
-    @Query('take') take?: string,
   ) {
-    // History listing — GET /api/sentiment?page=1&take=20
-    if (q === undefined && query === undefined && !jobId) {
-      const pageNum = Math.max(1, Number.parseInt(page ?? '1', 10));
-      const takeNum = Math.min(50, Math.max(1, Number.parseInt(take ?? '20', 10)));
-      const offset = (pageNum - 1) * takeNum;
-      const { items, total } = await this.sentimentService.getHistory(takeNum, offset);
-      return {
-        data: items,
-        pagination: {
-          page: pageNum,
-          take: takeNum,
-          total,
-          totalPages: Math.ceil(total / takeNum),
-        },
-      };
-    }
-
     // Single job by jobId — GET /api/sentiment?jobId=sentiment_xxx
     if (jobId) {
       const record = await this.sentimentService.getByJobId(jobId);
