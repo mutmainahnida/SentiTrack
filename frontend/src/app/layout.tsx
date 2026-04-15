@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import { ThemeProvider } from "@/components/ThemeProvider";
+import ClientLayout from "@/components/ClientLayout";
 import "./globals.css";
 
 const inter = Inter({
@@ -30,7 +30,7 @@ export default function RootLayout({
       <body
         className={`${inter.variable} min-h-screen flex flex-col antialiased`}
       >
-        <ThemeProvider>{children}</ThemeProvider>
+        <ClientLayout>{children}</ClientLayout>
       </body>
     </html>
   );

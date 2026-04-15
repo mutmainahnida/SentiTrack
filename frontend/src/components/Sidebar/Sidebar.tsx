@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
+import { useAuthStore } from "@/stores/authStore";
 import MaterialIcon from "../MaterialIcon";
 
 const navItems = [
@@ -12,6 +13,7 @@ const navItems = [
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const { isAuthenticated, openLogoutModal } = useAuthStore();
 
   return (
     <aside className="fixed left-0 top-0 h-screen w-64 border-r border-app-border-strong dark:border-app-border-strong bg-app-surface-low dark:bg-app-bg flex flex-col py-8 px-6 z-50">
@@ -47,12 +49,17 @@ export default function Sidebar() {
       </nav>
 
       {/* Logout */}
-      <div className="pt-8 border-t border-app-border-strong dark:border-app-border-strong mt-auto">
-        <button className="flex items-center gap-3 py-3 px-4 w-full rounded-lg transition-all duration-200 text-app-muted border border-transparent hover:border-red-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 group">
-          <MaterialIcon name="logout" className="group-hover:scale-110 transition-transform" />
-          <span className="text-sm font-bold">Logout</span>
-        </button>
-      </div>
+      {isAuthenticated && (
+        <div className="pt-8 border-t border-app-border-strong dark:border-app-border-strong mt-auto">
+          <button
+            onClick={openLogoutModal}
+            className="flex items-center gap-3 py-3 px-4 w-full rounded-lg transition-all duration-200 text-app-muted border border-transparent hover:border-red-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 group"
+          >
+            <MaterialIcon name="logout" className="group-hover:scale-110 transition-transform" />
+            <span className="text-sm font-bold">Logout</span>
+          </button>
+        </div>
+      )}
     </aside>
   );
 }
