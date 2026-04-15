@@ -15,7 +15,7 @@ enum JobStatus {
 }
 
 model SearchJobHistory {
-  id             String    @id @default(cuid())
+  id             String    @id @default(uuid())
   jobId          String    @unique
   query          String
   product        String    @default("Top")
@@ -37,7 +37,7 @@ model SearchJobHistory {
 }
 
 model SentimentJobHistory {
-  id             String    @id @default(cuid())
+  id             String    @id @default(uuid())
   jobId          String    @unique
   query          String
   product        String    @default("Top")
@@ -63,28 +63,12 @@ model SentimentJobHistory {
 }
 
 model User {
-  id           String       @id @default(cuid())
+  id           String    @id @default(uuid())
   name         String
-  email        String       @unique
-  passwordHash String
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-  sessions     AuthSession[]
+  email        String    @unique
+  password     String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   @@index([email])
-}
-
-model AuthSession {
-  id                      String    @id @default(cuid())
-  userId                  String
-  user                    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  accessTokenExpiresAt    DateTime
-  refreshTokenExpiresAt   DateTime
-  createdAt               DateTime  @default(now())
-  updatedAt               DateTime  @updatedAt
-  lastUsedAt              DateTime  @default(now())
-  revokedAt               DateTime?
-
-  @@index([userId, createdAt])
-  @@index([refreshTokenExpiresAt])
 }

@@ -1,11 +1,26 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { TokenSessionService } from './token-session.service';
+
+const mockConfig = {
+  get: (key: string) => {
+    const map: Record<string, string> = {
+      JWT_ACCESS_SECRET: 'test-access-secret',
+      JWT_REFRESH_SECRET: 'test-refresh-secret',
+      REDIS_HOST: 'localhost',
+      REDIS_PORT: '6379',
+    };
+    return map[key];
+  },
+};
 
 const redisMock = {
   multi: jest.fn(),
   setex: jest.fn(),
+  set: jest.fn(),
   del: jest.fn(),
+  get: jest.fn(),
   exec: jest.fn(),
 };
 
@@ -24,7 +39,9 @@ describe('TokenSessionService', () => {
 
     redisMock.multi.mockReset();
     redisMock.setex.mockReset();
+    redisMock.set.mockReset();
     redisMock.del.mockReset();
+    redisMock.get.mockReset();
     redisMock.exec.mockReset();
     redisMock.multi.mockReturnValue({
       setex: jest.fn().mockReturnThis(),
@@ -35,6 +52,7 @@ describe('TokenSessionService', () => {
       providers: [
         TokenSessionService,
         { provide: JwtService, useValue: jwtService },
+        { provide: ConfigService, useValue: mockConfig },
       ],
     }).compile();
 
@@ -51,7 +69,7 @@ describe('TokenSessionService', () => {
     service.signAccessToken(payload);
 
     expect(jwtService.sign).toHaveBeenCalledWith(payload, {
-      secret: expect.any(String),
+      secret: 'test-access-secret',
       expiresIn: 25200,
     });
   });
@@ -62,57 +80,40 @@ describe('TokenSessionService', () => {
     service.signRefreshToken(payload);
 
     expect(jwtService.sign).toHaveBeenCalledWith(payload, {
-      secret: expect.any(String),
+      secret: 'test-refresh-secret',
       expiresIn: 2592000,
     });
   });
 
-  it('should set both Redis keys with correct TTLs', async () => {
-    const multiChain = {
-      setex: jest.fn().mockReturnThis(),
-      exec: jest.fn().mockResolvedValue([]),
-    };
-    redisMock.multi.mockReturnValue(multiChain);
+  it('should set Redis key with correct TTL', async () => {
+    redisMock.setex.mockResolvedValue('OK');
 
-    await service.storeTokensInRedis('session_1', 'access_token', 'refresh_token');
+    await service.storeTokensInRedis('session_1', 'access_token', 'refresh_token', 'user_1');
 
-    expect(redisMock.multi).toHaveBeenCalled();
-    expect(multiChain.setex).toHaveBeenCalledTimes(2);
-
-    const accessKey = 'auth:session:session_1:access';
-    const refreshKey = 'auth:session:session_1:refresh';
-
-    const setexCalls = multiChain.setex.mock.calls;
-
-    const [accessKeyArg, accessTtlArg, accessValueArg] = setexCalls[0];
-    expect(accessKeyArg).toBe(accessKey);
-    expect(accessTtlArg).toBe(25200);
-    expect(JSON.parse(accessValueArg as string)).toMatchObject({
-      sessionId: 'session_1',
-      token: 'access_token',
-      type: 'access',
-    });
-
-    const [refreshKeyArg, refreshTtlArg, refreshValueArg] = setexCalls[1];
-    expect(refreshKeyArg).toBe(refreshKey);
-    expect(refreshTtlArg).toBe(2592000);
-    expect(JSON.parse(refreshValueArg as string)).toMatchObject({
-      sessionId: 'session_1',
-      token: 'refresh_token',
-      type: 'refresh',
-    });
-
-    expect(multiChain.exec).toHaveBeenCalled();
+    expect(redisMock.setex).toHaveBeenCalledTimes(1);
+    expect(redisMock.setex).toHaveBeenCalledWith(
+      'auth:jwt:user:user_1',
+      2592000,
+      expect.any(String),
+    );
   });
 
-  it('should delete both Redis keys', async () => {
-    redisMock.del.mockResolvedValue(2);
+  it('should delete Redis key', async () => {
+    redisMock.del.mockResolvedValue(1);
 
-    await service.deleteTokensFromRedis('session_1');
+    await service.deleteTokensFromRedis('user_1');
 
-    expect(redisMock.del).toHaveBeenCalledWith(
-      'auth:session:session_1:access',
-      'auth:session:session_1:refresh',
-    );
+    expect(redisMock.del).toHaveBeenCalledWith('auth:jwt:user:user_1');
+  });
+
+  it('should sign new tokens and store in Redis during rotation', async () => {
+    redisMock.setex.mockResolvedValue('OK');
+
+    const result = await service.rotateTokens('session_1', 'user_1');
+
+    expect(jwtService.sign).toHaveBeenCalledTimes(2);
+    expect(redisMock.setex).toHaveBeenCalledTimes(1);
+    expect(result.accessToken).toBe('mock_token');
+    expect(result.refreshToken).toBe('mock_token');
   });
 });

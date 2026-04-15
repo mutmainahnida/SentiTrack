@@ -1,0 +1,81 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1776248281153,
+  "projectRoot": "D:\\Codingan\\projects\\SentiTrack\\scraper",
+  "techStack": {
+    "languages": [
+      {
+        "name": "JavaScript/TypeScript",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "package.json"
+        ]
+      }
+    ],
+    "frameworks": [
+      {
+        "name": "express",
+        "version": "4.18.2",
+        "category": "backend"
+      }
+    ],
+    "packageManager": "npm",
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": null,
+    "testCommand": null,
+    "lintCommand": null,
+    "devCommand": "npm run start",
+    "scripts": {
+      "start": "node src/service.js"
+    }
+  },
+  "conventions": {
+    "namingStyle": "camelCase",
+    "importStyle": "CommonJS",
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [
+      "src"
+    ],
+    "gitBranches": {
+      "defaultBranch": "main",
+      "branchingStrategy": null
+    }
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "results": {
+      "path": "results",
+      "purpose": null,
+      "fileCount": 22,
+      "lastAccessed": 1776248281116,
+      "keyFiles": [
+        "search_BGN_1776220878043.json",
+        "search_BGN_1776221066178.json",
+        "search_BGN_1776234128048.json",
+        "search_BGN_1776234534917.json",
+        "search_BGN_1776234558919.json"
+      ]
+    },
+    "src": {
+      "path": "src",
+      "purpose": "Source code",
+      "fileCount": 3,
+      "lastAccessed": 1776248281117,
+      "keyFiles": [
+        "puppeteer-auth.js",
+        "scraper.js",
+        "service.js"
+      ]
+    }
+  },
+  "hotPaths": [],
+  "userDirectives": []
+}

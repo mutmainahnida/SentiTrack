@@ -1,0 +1,7 @@
+{
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"cd D:/Codingan/projects/SentiTrack/backend-api && npx jest --passWithNoTests 2>&1\",\"timeout\":60000}",
+  "error": "Exit code 1\n\u001b[31m[Nest] 7316  - \u001b[39m15/04/2026, 16.49.29 \u001b[31m  ERROR\u001b[39m \u001b[38;5;3m[SentimentProcessor] \u001b[39m\u001b[31mSentiment job sentiment_123 failed: Error: OpenRouter unavailable\u001b[39m\n\u001b[31m[Nest] 12680  - \u001b[39m15/04/2026, 16.49.29 \u001b[31m  ERROR\u001b[39m \u001b[38;5;3m[SearchProcessor] \u001b[39m\u001b[31mSearch job search_123 failed: Scraper unavailable\u001b[39m\nFAIL src/auth/controllers/auth.controller.spec.ts\n  ● AuthController › should delegate register() to authService.register() and return ApiResponse\n\n    expe...",
+  "timestamp": "2026-04-15T09:49:30.616Z",
+  "retry_count": 1
+}

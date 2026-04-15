@@ -1,7 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import Redis from 'ioredis';
-import { authConfig } from '../config/auth.config';
+import { ConfigService } from '@nestjs/config';
 
 interface TokenPayload {
   sub: string;
@@ -19,23 +19,26 @@ interface TokenCacheEntry {
 export class TokenSessionService {
   private readonly redis: Redis;
 
-  constructor(private readonly jwtService: JwtService) {
-    const host = process.env['REDIS_HOST'] ?? 'localhost';
-    const port = parseInt(process.env['REDIS_PORT'] ?? '6379', 10);
+  constructor(
+    private readonly jwtService: JwtService,
+    private readonly config: ConfigService,
+  ) {
+    const host = config.get<string>('REDIS_HOST') ?? 'localhost';
+    const port = parseInt(config.get<string>('REDIS_PORT') ?? '6379', 10);
     this.redis = new Redis({ host, port });
   }
 
   signAccessToken(payload: TokenPayload): string {
     return this.jwtService.sign(payload, {
-      secret: authConfig.jwtAccessSecret,
-      expiresIn: authConfig.jwtAccessTtlSeconds,
+      secret: this.config.get<string>('JWT_ACCESS_SECRET') ?? '',
+      expiresIn: 25200,
     });
   }
 
   signRefreshToken(payload: TokenPayload): string {
     return this.jwtService.sign(payload, {
-      secret: authConfig.jwtRefreshSecret,
-      expiresIn: authConfig.jwtRefreshTtlSeconds,
+      secret: this.config.get<string>('JWT_REFRESH_SECRET') ?? '',
+      expiresIn: 2592000,
     });
   }
 
@@ -43,34 +46,54 @@ export class TokenSessionService {
     sessionId: string,
     accessToken: string,
     refreshToken: string,
+    userId: string,
   ): Promise<void> {
-    const accessKey = `auth:session:${sessionId}:access`;
-    const refreshKey = `auth:session:${sessionId}:refresh`;
-
-    const accessEntry: TokenCacheEntry = {
-      userId: '',
+    const redisKey = `auth:jwt:user:${userId}`;
+    const sessionData = {
+      userId,
       sessionId,
-      token: accessToken,
-      type: 'access',
-    };
-    const refreshEntry: TokenCacheEntry = {
-      userId: '',
-      sessionId,
-      token: refreshToken,
-      type: 'refresh',
+      accessToken,
+      refreshToken,
     };
 
-    await this.redis
-      .multi()
-      .setex(accessKey, authConfig.jwtAccessTtlSeconds, JSON.stringify(accessEntry))
-      .setex(refreshKey, authConfig.jwtRefreshTtlSeconds, JSON.stringify(refreshEntry))
-      .exec();
+    // Store up to the refresh token expiry (30 days)
+    await this.redis.setex(redisKey, 2592000, JSON.stringify(sessionData));
   }
 
-  async deleteTokensFromRedis(sessionId: string): Promise<void> {
-    const accessKey = `auth:session:${sessionId}:access`;
-    const refreshKey = `auth:session:${sessionId}:refresh`;
+  async deleteTokensFromRedis(userId: string): Promise<void> {
+    const redisKey = `auth:jwt:user:${userId}`;
+    await this.redis.del(redisKey);
+  }
 
-    await this.redis.del(accessKey, refreshKey);
+  async validateRefreshTokenAgainstRedis(userId: string, incomingToken: string): Promise<boolean> {
+    const redisKey = `auth:jwt:user:${userId}`;
+    const storedData = await this.redis.get(redisKey);
+    
+    if (!storedData) return false;
+
+    try {
+      const sessionData = JSON.parse(storedData);
+      return sessionData.refreshToken === incomingToken;
+    } catch {
+      return false;
+    }
+  }
+
+  async verifyRefreshToken(refreshToken: string): Promise<TokenPayload> {
+    return this.jwtService.verify<TokenPayload>(refreshToken, {
+      secret: this.config.get<string>('JWT_REFRESH_SECRET') ?? '',
+    });
+  }
+
+  async rotateTokens(
+    sessionId: string,
+    userId: string,
+  ): Promise<{ accessToken: string; refreshToken: string }> {
+    const accessToken = this.signAccessToken({ sub: userId, sessionId });
+    const newRefreshToken = this.signRefreshToken({ sub: userId, sessionId });
+
+    await this.storeTokensInRedis(sessionId, accessToken, newRefreshToken, userId);
+
+    return { accessToken, refreshToken: newRefreshToken };
   }
 }

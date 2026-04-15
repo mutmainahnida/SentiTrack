@@ -58,10 +58,10 @@ async function loadSession() {
 /**
  * Set cookies directly (used by /login/save)
  * @param {string} cookieString
- * @param {string} csrfToken
+ * @param {string} _csrfToken
  * @returns {Promise<void>}
  */
-async function setCookies(cookieString, csrfToken) {
+async function setCookies(cookieString, _csrfToken) {
   scraper = new Scraper();
 
   const cookieStrings = cookieString.split(';').map(s => s.trim()).filter(Boolean);

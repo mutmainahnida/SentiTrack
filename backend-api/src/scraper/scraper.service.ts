@@ -29,7 +29,7 @@ export class ScraperService {
   constructor(private config: ConfigService) {
     this.baseUrl = this.config.get<string>(
       'SCRAPER_BASE_URL',
-      'http://localhost:3000',
+      'http://localhost:3001',
     );
   }
 

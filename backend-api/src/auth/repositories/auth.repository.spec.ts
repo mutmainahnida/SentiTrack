@@ -9,10 +9,6 @@ describe('AuthRepository', () => {
       findUnique: jest.Mock;
       create: jest.Mock;
     };
-    authSession: {
-      create: jest.Mock;
-      delete: jest.Mock;
-    };
   };
 
   beforeEach(() => {
@@ -20,10 +16,6 @@ describe('AuthRepository', () => {
       user: {
         findUnique: jest.fn(),
         create: jest.fn(),
-      },
-      authSession: {
-        create: jest.fn(),
-        delete: jest.fn(),
       },
     };
 
@@ -41,7 +33,7 @@ describe('AuthRepository', () => {
       id: 'user_1',
       name: 'John Doe',
       email: 'john@example.com',
-      passwordHash: 'hash',
+      password: 'hash',
       createdAt: new Date(),
     });
 
@@ -59,14 +51,15 @@ describe('AuthRepository', () => {
       id: 'user_1',
       name: 'John Doe',
       email: 'john@example.com',
-      passwordHash: 'hash',
+      password: 'hash',
       createdAt: now,
+      updatedAt: now,
     });
 
     await repository.createUser({
       name: 'John Doe',
       email: 'john@example.com',
-      passwordHash: 'hash',
+      password: 'hash',
     });
 
     expect(prismaService.user.create).toHaveBeenCalledTimes(1);
@@ -74,50 +67,8 @@ describe('AuthRepository', () => {
       data: {
         name: 'John Doe',
         email: 'john@example.com',
-        passwordHash: 'hash',
+        password: 'hash',
       },
-    });
-  });
-
-  it('should call prisma.authSession.create()', async () => {
-    const accessTokenExpiresAt = new Date('2026-04-16');
-    const refreshTokenExpiresAt = new Date('2026-05-15');
-    prismaService.authSession.create.mockResolvedValue({
-      id: 'session_1',
-      userId: 'user_1',
-      accessTokenExpiresAt,
-      refreshTokenExpiresAt,
-    });
-
-    await repository.createSession({
-      userId: 'user_1',
-      accessTokenExpiresAt,
-      refreshTokenExpiresAt,
-    });
-
-    expect(prismaService.authSession.create).toHaveBeenCalledTimes(1);
-    expect(prismaService.authSession.create).toHaveBeenCalledWith({
-      data: {
-        userId: 'user_1',
-        accessTokenExpiresAt,
-        refreshTokenExpiresAt,
-      },
-    });
-  });
-
-  it('should call prisma.authSession.delete()', async () => {
-    prismaService.authSession.delete.mockResolvedValue({
-      id: 'session_1',
-      userId: 'user_1',
-      accessTokenExpiresAt: new Date(),
-      refreshTokenExpiresAt: new Date(),
-    });
-
-    await repository.deleteSession('session_1');
-
-    expect(prismaService.authSession.delete).toHaveBeenCalledTimes(1);
-    expect(prismaService.authSession.delete).toHaveBeenCalledWith({
-      where: { id: 'session_1' },
     });
   });
 });

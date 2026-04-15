@@ -1,7 +1,9 @@
+export type SearchProduct = 'Top' | 'Latest';
+
 export interface SentimentJobData {
   jobId: string;
   query: string;
-  product: 'Top' | 'Latest';
+  product: SearchProduct;
   limit: number;
 }
 

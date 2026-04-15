@@ -5,28 +5,18 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
-import { authConfig } from '../config/auth.config';
+import { randomUUID } from 'crypto';
 import { LoginDto } from '../dto/login.dto';
 import { RegisterDto } from '../dto/register.dto';
 import { AuthRepository } from '../repositories/auth.repository';
 import { TokenSessionService } from './token-session.service';
-
-export interface AuthResponse {
-  user: {
-    id: string;
-    name: string;
-    email: string;
-    createdAt: Date;
-  };
-  sessionId: string;
-  accessToken: string;
-  refreshToken: string;
-  accessTokenExpiresIn: number;
-  refreshTokenExpiresIn: number;
-}
+import { TokenResponse } from '../types/auth-response.type';
+import { AuthResponse } from '../types/auth-response.type';
 
 @Injectable()
 export class AuthService {
+  private readonly saltRounds = 10;
+
   constructor(
     private readonly authRepository: AuthRepository,
     private readonly tokenSessionService: TokenSessionService,
@@ -40,48 +30,32 @@ export class AuthService {
       throw new ConflictException('Email already registered');
     }
 
-    const passwordHash = await bcrypt.hash(
-      dto.password,
-      authConfig.bcryptSaltRounds,
-    );
+    const hashedPassword = await bcrypt.hash(dto.password, this.saltRounds);
 
     const user = await this.authRepository.createUser({
       name: dto.name,
       email: normalizedEmail,
-      passwordHash,
+      password: hashedPassword,
     });
 
-    const now = new Date();
-    const accessTokenExpiresAt = new Date(
-      now.getTime() + authConfig.jwtAccessTtlSeconds * 1000,
-    );
-    const refreshTokenExpiresAt = new Date(
-      now.getTime() + authConfig.jwtRefreshTtlSeconds * 1000,
-    );
-
-    const session = await this.authRepository.createSession({
-      userId: user.id,
-      accessTokenExpiresAt,
-      refreshTokenExpiresAt,
-    });
-
+    const sessionId = randomUUID();
     const accessToken = this.tokenSessionService.signAccessToken({
       sub: user.id,
-      sessionId: session.id,
+      sessionId,
     });
     const refreshToken = this.tokenSessionService.signRefreshToken({
       sub: user.id,
-      sessionId: session.id,
+      sessionId,
     });
 
     try {
       await this.tokenSessionService.storeTokensInRedis(
-        session.id,
+        sessionId,
         accessToken,
         refreshToken,
+        user.id,
       );
     } catch {
-      await this.authRepository.deleteSession(session.id).catch(() => {});
       throw new InternalServerErrorException('Authentication failed');
     }
 
@@ -92,15 +66,15 @@ export class AuthService {
         email: user.email,
         createdAt: user.createdAt,
       },
-      sessionId: session.id,
+      sessionId,
       accessToken,
       refreshToken,
-      accessTokenExpiresIn: authConfig.jwtAccessTtlSeconds,
-      refreshTokenExpiresIn: authConfig.jwtRefreshTtlSeconds,
+      accessTokenExpiresIn: 25200,
+      refreshTokenExpiresIn: 2592000,
     };
   }
 
-  async login(dto: LoginDto): Promise<AuthResponse> {
+  async login(dto: LoginDto): Promise<TokenResponse> {
     const normalizedEmail = dto.email.trim().toLowerCase();
 
     const user = await this.authRepository.findUserByEmail(normalizedEmail);
@@ -108,57 +82,75 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password');
     }
 
-    const passwordMatch = await bcrypt.compare(dto.password, user.passwordHash);
+    const passwordMatch = await bcrypt.compare(dto.password, user.password);
     if (!passwordMatch) {
       throw new UnauthorizedException('Invalid email or password');
     }
 
-    const now = new Date();
-    const accessTokenExpiresAt = new Date(
-      now.getTime() + authConfig.jwtAccessTtlSeconds * 1000,
-    );
-    const refreshTokenExpiresAt = new Date(
-      now.getTime() + authConfig.jwtRefreshTtlSeconds * 1000,
-    );
-
-    const session = await this.authRepository.createSession({
-      userId: user.id,
-      accessTokenExpiresAt,
-      refreshTokenExpiresAt,
-    });
-
+    const sessionId = randomUUID();
     const accessToken = this.tokenSessionService.signAccessToken({
       sub: user.id,
-      sessionId: session.id,
+      sessionId,
     });
     const refreshToken = this.tokenSessionService.signRefreshToken({
       sub: user.id,
-      sessionId: session.id,
+      sessionId,
     });
 
     try {
       await this.tokenSessionService.storeTokensInRedis(
-        session.id,
+        sessionId,
         accessToken,
         refreshToken,
+        user.id,
       );
     } catch {
-      await this.authRepository.deleteSession(session.id).catch(() => {});
       throw new InternalServerErrorException('Authentication failed');
     }
 
     return {
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        createdAt: user.createdAt,
-      },
-      sessionId: session.id,
       accessToken,
       refreshToken,
-      accessTokenExpiresIn: authConfig.jwtAccessTtlSeconds,
-      refreshTokenExpiresIn: authConfig.jwtRefreshTtlSeconds,
+      accessTokenExpiresIn: 25200,
+      refreshTokenExpiresIn: 2592000,
     };
+  }
+
+  async refresh(refreshToken: string): Promise<TokenResponse> {
+    let payload: { sub: string; sessionId: string };
+
+    try {
+      payload = await this.tokenSessionService.verifyRefreshToken(refreshToken);
+    } catch {
+      throw new UnauthorizedException('Invalid JWT signature or expired');
+    }
+
+    const isValidInRedis = await this.tokenSessionService.validateRefreshTokenAgainstRedis(
+      payload.sub,
+      refreshToken,
+    );
+
+    if (!isValidInRedis) {
+      await this.tokenSessionService.deleteTokensFromRedis(payload.sub);
+      throw new UnauthorizedException('Invalid Token');
+    }
+
+    try {
+      const tokens = await this.tokenSessionService.rotateTokens(
+        payload.sessionId,
+        payload.sub,
+      );
+      return {
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+        accessTokenExpiresIn: 25200,
+        refreshTokenExpiresIn: 2592000,
+      };
+    } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Failed to rotate tokens');
+    }
   }
 }
