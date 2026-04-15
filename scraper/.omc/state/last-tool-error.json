@@ -1,7 +1,0 @@
-{
-  "tool_name": "Bash",
-  "tool_input_preview": "{\"command\":\"cd D:/Codingan/projects/SentiTrack/backend-api && npm install @nestjs/throttle throttle\",\"description\":\"Install rate limiting packages\"}",
-  "error": "Exit code 1\nnpm error code E404\nnpm error 404 Not Found - GET https://registry.npmjs.org/@nestjs%2fthrottle - Not found\nnpm error 404\nnpm error 404  The requested resource '@nestjs/throttle@*' could not be found or you do not have permission to access it.\nnpm error 404\nnpm error 404 Note that you can also install from a\nnpm error 404 tarball, folder, http url, or git url.\nnpm error A complete log of this run can be found in: C:\\Users\\Nopsy\\AppData\\Local\\npm-cache\\_logs\\2026-04-15T10_21_47_815Z-d...",
-  "timestamp": "2026-04-15T10:21:50.550Z",
-  "retry_count": 1
-}
