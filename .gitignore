@@ -5,3 +5,8 @@ dist/
 *.log
 results/
 cookies.json
+.claude/
+.omc/
+.playwright-mcp/
+stitch-screens/
+

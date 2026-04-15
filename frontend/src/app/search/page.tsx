@@ -5,27 +5,274 @@ import { useSearchParams } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import TopBar from "@/components/TopBar";
 import MaterialIcon from "@/components/MaterialIcon";
-import PageLayout from "@/components/PageLayout";
+import LoadingAnimation from "@/components/LoadingAnimation";
+import { useSearchAnalysis, type ScrapedTweet } from "@/hooks/useSearchAnalysis";
+
+const SENTIMENT_ICONS: Record<string, string> = {
+  positive: "sentiment_satisfied",
+  neutral: "sentiment_neutral",
+  negative: "sentiment_dissatisfied",
+};
+
+const SENTIMENT_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+  positive: { bg: "bg-green-50 dark:bg-green-900/40", text: "text-green-700 dark:text-green-400", border: "border-green-200 dark:border-green-800/50" },
+  neutral: { bg: "bg-yellow-50 dark:bg-yellow-900/40", text: "text-yellow-700 dark:text-yellow-400", border: "border-yellow-200 dark:border-yellow-800/50" },
+  negative: { bg: "bg-red-50 dark:bg-red-900/40", text: "text-red-700 dark:text-red-400", border: "border-red-200 dark:border-red-800/50" },
+};
+
+const MEDIA_ICONS: Record<string, string> = {
+  photo: "image",
+  video: "videocam",
+  gif: "gif_box",
+};
+
+function getTimeAgo(ts: number): string {
+  // ts from hook is already in milliseconds
+  const diff = Date.now() - ts;
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${Math.max(0, mins)}m`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${Math.max(0, hrs)}h`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${Math.max(0, days)}d`;
+  const weeks = Math.floor(days / 7);
+  if (weeks < 4) return `${Math.max(0, weeks)}w`;
+  return `${Math.max(0, Math.floor(days / 30))}mo`;
+}
+
+function formatNumber(n: number): string {
+  if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
+  return String(n);
+}
+
+function TweetCard({ tweet, index, sentiment }: { tweet: ScrapedTweet; index: number; sentiment: "positive" | "neutral" | "negative" }) {
+  const colors = SENTIMENT_COLORS[sentiment];
+  // timestamp from hook is already in milliseconds
+  const timeAgo = tweet.timestamp > 0 ? getTimeAgo(tweet.timestamp) : getTimeAgo(Date.now() - index * 3600000);
+
+  return (
+    <article className="bg-app-bg dark:bg-app-surface-low border border-app-border/20 dark:border-app-border/20 rounded-xl p-6 shadow-sm hover:border-app-primary/30 transition-colors">
+      {/* Header Row */}
+      <div className="flex items-start gap-4 mb-4">
+        <div className="w-12 h-12 rounded-full bg-app-surface-low dark:bg-app-surface-lowest flex items-center justify-center flex-shrink-0">
+          <MaterialIcon name="person" className="text-2xl text-app-muted dark:text-app-muted" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2 mb-1">
+            <span className="font-bold text-app-main dark:text-app-main">{tweet.name}</span>
+            <span className="text-app-muted dark:text-app-muted">@{tweet.username}</span>
+            <span className="text-app-muted text-xs">· {timeAgo}</span>
+            <span className={`ml-auto inline-flex items-center gap-1 border rounded-full px-2.5 py-0.5 text-xs font-semibold ${colors.bg} ${colors.text} ${colors.border}`}>
+              <MaterialIcon name={SENTIMENT_ICONS[sentiment]} />
+              {sentiment.charAt(0).toUpperCase() + sentiment.slice(1)}
+            </span>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 text-xs text-app-muted dark:text-app-muted">
+            {tweet.isRetweet && <span className="flex items-center gap-0.5"><MaterialIcon name="repeat" className="text-[10px]" /> Retweet</span>}
+            {tweet.isReply && <span className="flex items-center gap-0.5"><MaterialIcon name="reply" className="text-[10px]" /> Reply</span>}
+          </div>
+        </div>
+      </div>
+
+      {/* Tweet Text */}
+      <p className="text-app-main dark:text-app-main mb-4 leading-relaxed">{tweet.text}</p>
+
+      {/* Media indicator */}
+      {tweet.hasMedia && tweet.mediaType && (
+        <div className="mb-4 flex items-center gap-1.5 text-app-muted dark:text-app-muted text-xs">
+          <MaterialIcon name={MEDIA_ICONS[tweet.mediaType]} className="text-sm" />
+          <span>{tweet.mediaType === "gif" ? "GIF" : tweet.mediaType === "video" ? "Video" : "Photo"} attached</span>
+        </div>
+      )}
+
+      {/* Stats Row */}
+      <div className="flex items-center gap-1 text-app-muted dark:text-app-muted text-sm border-t border-app-border/10 dark:border-app-border/10 pt-3">
+        <button className="flex items-center gap-1.5 hover:text-app-primary transition-colors px-2 py-1 rounded hover:bg-app-surface-low">
+          <MaterialIcon name="chat_bubble" className="text-base" /><span>{formatNumber(tweet.replies)}</span>
+        </button>
+        <button className="flex items-center gap-1.5 hover:text-green-500 transition-colors px-2 py-1 rounded hover:bg-green-50 dark:hover:bg-green-900/10">
+          <MaterialIcon name="repeat" className="text-base" /><span>{formatNumber(tweet.retweets)}</span>
+        </button>
+        <button className="flex items-center gap-1.5 hover:text-red-500 transition-colors px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-900/10">
+          <MaterialIcon name="favorite" className="text-base" /><span>{formatNumber(tweet.likes)}</span>
+        </button>
+        <button className="flex items-center gap-1.5 hover:text-app-primary transition-colors px-2 py-1 rounded hover:bg-app-surface-low">
+          <MaterialIcon name="visibility" className="text-base" /><span>{formatNumber(tweet.views)}</span>
+        </button>
+        <a
+          href={tweet.permanentUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="ml-auto flex items-center gap-1.5 hover:text-app-primary transition-colors px-2 py-1 rounded hover:bg-app-surface-low"
+        >
+          <MaterialIcon name="open_in_new" className="text-base" />
+        </a>
+      </div>
+    </article>
+  );
+}
+
+function TopKeywordsCard({ keywords, onKeywordClick }: { keywords: string[]; onKeywordClick: (kw: string) => void }) {
+  return (
+    <div className="bg-app-bg dark:bg-app-surface-low rounded-xl p-6 border border-app-border/20 dark:border-app-border/20">
+      <div className="flex items-center justify-between mb-5">
+        <h3 className="text-sm font-bold text-app-main dark:text-app-main">Trending Keywords</h3>
+        <MaterialIcon name="trending_up" className="text-app-primary" />
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {keywords.map((tag) => (
+          <button
+            key={tag}
+            onClick={() => onKeywordClick(tag)}
+            className="bg-app-surface-low dark:bg-app-surface-low text-app-primary dark:text-app-primary rounded-full px-3 py-1.5 text-xs font-semibold hover:bg-app-primary/20 dark:hover:bg-app-primary/20 transition-colors flex items-center gap-1"
+          >
+            <MaterialIcon name="search" className="text-[10px]" />
+            {tag}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+
+function CTACard() {
+  return (
+    <div className="bg-app-primary dark:bg-app-primary rounded-xl p-6 text-white">
+      <h3 className="text-base font-bold mb-2">Need Deeper Insights?</h3>
+      <p className="text-sm opacity-80 mb-5">Unlock competitor comparisons, historical trends, and exportable reports.</p>
+      <button className="w-full py-3 bg-white text-app-main dark:text-app-primary font-bold rounded-xl hover:bg-white/90 transition-colors">Compare Competitors</button>
+    </div>
+  );
+}
+
+function MetricsCard({ label, value, pct, color, count }: { label: string; value: number; pct: string; color: string; count: number }) {
+  return (
+    <div className="relative bg-app-surface-low dark:bg-app-surface-low border border-app-border/10 dark:border-app-border/10 rounded-xl p-6 flex flex-col gap-4 overflow-hidden">
+      <div className="absolute right-0 top-0 bottom-0 w-2" style={{ backgroundColor: color }} />
+      <div>
+        <p className="text-app-primary dark:text-app-primary font-semibold mb-1">{label}</p>
+        <div className="flex items-end gap-2">
+          <span className="text-4xl font-black text-app-main dark:text-app-main leading-none">{value}%</span>
+          <span className="text-app-muted dark:text-app-muted mb-1 font-medium">{count.toLocaleString()} tweets</span>
+        </div>
+      </div>
+      <div>
+        <div className="h-1.5 bg-app-surface-low dark:bg-app-surface-low rounded-full overflow-hidden">
+          <div className="h-full rounded-full" style={{ width: pct, backgroundColor: color }} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AnalysisResults({ result, onAnalyze }: { result: { score: number; positive: number; neutral: number; negative: number; total: number; topKeywords: string[]; tweets: ScrapedTweet[]; query: string }; onAnalyze: (q: string) => void }) {
+  const scoreLabel = result.score >= 70 ? "High Sentiment" : result.score >= 40 ? "Mixed Sentiment" : "Low Sentiment";
+  const scoreIcon = result.score >= 70 ? "sentiment_satisfied" : result.score >= 40 ? "sentiment_neutral" : "sentiment_dissatisfied";
+  const scoreColorClass = result.score >= 70 ? "bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400" : result.score >= 40 ? "bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-400" : "bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400";
+
+  // Sentiment is now attached to each tweet from real per-tweet analysis
+
+  return (
+    <>
+      {/* Score Header */}
+      <div className="bg-app-bg dark:bg-app-surface-low rounded-xl p-8 text-center border border-slate-200 dark:border-app-border-strong mb-8">
+        <p className="text-xs font-bold uppercase tracking-widest text-app-muted dark:text-app-muted mb-4">Overall Score for "{result.query}"</p>
+        <p className="text-6xl font-black text-app-main dark:text-app-main leading-none">
+          {result.score}<span className="text-2xl font-normal text-app-muted">/100</span>
+        </p>
+        <div className="mt-4 flex items-center justify-center gap-2">
+          <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm font-semibold ${scoreColorClass}`}>
+            <MaterialIcon name={scoreIcon} />
+            {scoreLabel}
+          </span>
+        </div>
+      </div>
+
+      {/* Sentiment Cards */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-12">
+        <MetricsCard label="Positive" value={result.positive} pct={`${result.positive}%`} color="#22c55e" count={Math.round(result.total * result.positive / 100)} />
+        <MetricsCard label="Neutral" value={result.neutral} pct={`${result.neutral}%`} color="#eab308" count={Math.round(result.total * result.neutral / 100)} />
+        <MetricsCard label="Negative" value={result.negative} pct={`${result.negative}%`} color="#f87171" count={Math.round(result.total * result.negative / 100)} />
+        <div className="bg-app-primary dark:bg-app-primary rounded-xl p-6 text-white flex flex-col justify-between">
+          <div>
+            <p className="text-sm font-bold opacity-80 mb-2">Total Data</p>
+            <p className="text-4xl font-black">{result.total.toLocaleString()}</p>
+            <p className="text-sm opacity-80 mt-1">tweets analyzed</p>
+          </div>
+          <MaterialIcon name="analytics" className="text-4xl opacity-50" />
+        </div>
+      </div>
+
+      {/* Main Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+        <div className="lg:col-span-8 space-y-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold text-app-main dark:text-app-main">
+              Recent Mentions
+              <span className="ml-2 text-sm font-normal text-app-muted">({result.tweets.length} tweets)</span>
+            </h2>
+          </div>
+          {result.tweets.map((tweet, i) => (
+            <TweetCard key={tweet.id} tweet={tweet} index={i} sentiment={tweet.sentiment} />
+          ))}
+        </div>
+
+        <div className="lg:col-span-4 space-y-8">
+          <TopKeywordsCard keywords={result.topKeywords} onKeywordClick={onAnalyze} />
+          <CTACard />
+        </div>
+      </div>
+    </>
+  );
+}
+
+function IdleState() {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[300px] gap-4 py-12">
+      <p className="text-app-muted dark:text-app-muted">Ketik keyword dan klik Analyze untuk memulai analisis</p>
+    </div>
+  );
+}
 
 function SearchContent() {
   const searchParams = useSearchParams();
   const urlQuery = searchParams.get("q") ?? "";
   const [searchValue, setSearchValue] = useState(urlQuery);
+  const [analysisDone, setAnalysisDone] = useState(false);
+
+  const { status, messageIndex, result, error, startAnalysis } = useSearchAnalysis();
 
   useEffect(() => {
-    if (urlQuery) {
+    if (urlQuery && !searchValue && status === "idle") {
       setSearchValue(urlQuery);
     }
-  }, [urlQuery]);
+  }, [urlQuery, searchValue, status]);
+
+  useEffect(() => {
+    if (urlQuery && status === "idle" && !analysisDone) {
+      startAnalysis(urlQuery);
+      setAnalysisDone(true);
+    }
+  }, [urlQuery, status, analysisDone, startAnalysis]);
+
+  const handleAnalyze = (kw?: string) => {
+    const q = (kw ?? searchValue).trim();
+    if (!q) return;
+    if (kw) setSearchValue(kw);
+    startAnalysis(q);
+    setAnalysisDone(true);
+  };
 
   return (
     <div className="flex h-screen overflow-hidden bg-app-bg dark:bg-app-bg">
       <Sidebar />
-      <PageLayout>
-        <div className="ml-64 flex-1 flex flex-col h-full overflow-hidden">
-          <TopBar />
-          <div className="flex-1 flex flex-col overflow-y-auto">
-            <div className="flex-1 max-w-7xl mx-auto w-full px-8 py-8">
+      <div className="ml-64 flex-1 flex flex-col h-full overflow-hidden">
+        <TopBar />
+        <div className="flex-1 flex flex-col overflow-y-auto">
+          <div className="flex-1 px-8 py-8 max-w-7xl mx-auto w-full">
+
               {/* Search Header Bar */}
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10 mt-6">
                 <div className="relative flex-1 max-w-2xl">
@@ -36,137 +283,53 @@ function SearchContent() {
                     type="text"
                     value={searchValue}
                     onChange={(e) => setSearchValue(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") handleAnalyze(); }}
                     placeholder="Search keywords or topics..."
-                    className="w-full pl-12 pr-4 py-4 bg-app-bg dark:bg-app-surface-low border border-app-border-strong dark:border-app-border-strong rounded-xl text-app-main dark:text-app-main placeholder:text-app-muted/60 dark:placeholder:text-app-muted/60 focus:outline-none focus:ring-2 focus:ring-app-primary/40 dark:focus:ring-app-primary/40"
+                    disabled={status === "loading"}
+                    className="w-full pl-12 pr-4 py-4 bg-app-bg dark:bg-app-surface-low border border-app-border-strong dark:border-app-border-strong rounded-xl text-app-main dark:text-app-main placeholder:text-app-muted/60 dark:placeholder:text-app-muted/60 focus:outline-none focus:ring-2 focus:ring-app-primary/40 disabled:opacity-60"
                   />
                 </div>
                 <div className="flex items-center gap-3 flex-shrink-0">
+                  <button
+                    onClick={() => handleAnalyze()}
+                    disabled={status === "loading" || !searchValue.trim()}
+                    className="flex items-center gap-2 px-5 py-3 bg-app-primary dark:bg-app-primary text-white font-semibold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50"
+                  >
+                    <MaterialIcon name="trending_up" />
+                    <span>{status === "loading" ? "Analyzing..." : "Analyze"}</span>
+                  </button>
                   <button className="flex items-center gap-2 px-5 py-3 bg-app-surface-lowest dark:bg-app-surface-lowest text-app-primary dark:text-app-primary font-semibold rounded-xl hover:opacity-90 transition-opacity">
                     <MaterialIcon name="bookmark" />
                     <span>Save Search</span>
                   </button>
-                  <button className="flex items-center gap-2 px-5 py-3 bg-app-primary dark:bg-app-primary text-white font-semibold rounded-xl hover:bg-app-primary dark:hover:bg-app-primary/90 transition-colors">
+                  <button className="flex items-center gap-2 px-5 py-3 bg-app-surface-lowest dark:bg-app-surface-lowest text-app-primary dark:text-app-primary font-semibold rounded-xl hover:opacity-90 transition-opacity">
                     <MaterialIcon name="download" />
                     <span>Export to CSV</span>
                   </button>
                 </div>
               </div>
 
-              {/* Metric Section */}
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-12">
-                <div className="bg-app-bg dark:bg-app-surface-low rounded-xl p-8 text-center border border-slate-200 dark:border-app-border-strong">
-                  <p className="text-xs font-bold uppercase tracking-widest text-app-muted dark:text-app-muted mb-4">Overall Score</p>
-                  <p className="text-6xl font-black text-app-main dark:text-app-main leading-none">
-                    78<span className="text-2xl font-normal text-app-muted">/100</span>
-                  </p>
-                  <div className="mt-4 flex items-center justify-center gap-2">
-                    <span className="inline-flex items-center gap-1 bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 rounded-full px-3 py-1 text-sm font-semibold">
-                      <MaterialIcon name="trending_up" />
-                      High Sentiment
-                    </span>
+              {/* Content Area */}
+              <div className="flex-1 min-h-0">
+                {status === "loading" && (
+                  <div className="flex items-center justify-center min-h-[400px]">
+                    <LoadingAnimation messageIndex={messageIndex} />
                   </div>
-                </div>
-                <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {[
-                    { label: "Positive", pct: "65%", posts: "1,240", color: "#22c55e" },
-                    { label: "Neutral", pct: "20%", posts: "380", color: "#eab308" },
-                    { label: "Negative", pct: "15%", posts: "285", color: "#f87171" },
-                  ].map((m) => (
-                    <div key={m.label} className="relative bg-app-surface-low dark:bg-app-surface-low border border-app-border/10 dark:border-app-border/10 rounded-xl p-6 flex flex-col gap-4 overflow-hidden">
-                      <div className="absolute right-0 top-0 bottom-0 w-2" style={{ backgroundColor: m.color }} />
-                      <div>
-                        <p className="text-app-primary dark:text-app-primary font-semibold mb-1">{m.label}</p>
-                        <div className="flex items-end gap-2">
-                          <span className="text-4xl font-black text-app-main dark:text-app-main leading-none">{m.pct}</span>
-                          <span className="text-app-muted dark:text-app-muted mb-1 font-medium">{m.posts} posts</span>
-                        </div>
-                      </div>
-                      <div>
-                        <div className="h-1.5 bg-app-surface-low dark:bg-app-surface-low rounded-full overflow-hidden">
-                          <div className="h-full rounded-full" style={{ width: m.pct, backgroundColor: m.color }} />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                )}
+                {status === "error" && (
+                  <div className="flex flex-col items-center justify-center py-16 gap-4">
+                    <MaterialIcon name="error_outline" className="text-5xl text-red-500" />
+                    <p className="text-app-muted dark:text-app-muted">{error}</p>
+                    <button onClick={() => handleAnalyze()} className="px-6 py-2 bg-app-primary text-white font-bold rounded-xl hover:opacity-90">Coba Lagi</button>
+                  </div>
+                )}
+                {status === "done" && result && <AnalysisResults result={result} onAnalyze={handleAnalyze} />}
+                {status === "idle" && !urlQuery && <IdleState />}
               </div>
 
-              {/* Main Layout */}
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
-                <div className="lg:col-span-8 space-y-6">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-bold text-app-main dark:text-app-main">Recent Mentions</h2>
-                    <button className="text-sm font-semibold text-app-primary dark:text-app-primary hover:text-app-primary/80 transition-colors flex items-center gap-1">
-                      View all <MaterialIcon name="chevron_right" />
-                    </button>
-                  </div>
-                  {[
-                    { name: "Alex Chen", handle: "@alexchen", time: "2h ago", sentiment: "Positive", color: "green", icon: "sentiment_satisfied", text: "Just got the iPhone 15 Pro Max and the titanium frame feels amazing. Battery life is a huge upgrade from my 13 — easily lasts all day with heavy use!", likes: "2,841", retweets: "412", comments: "89", img: "1" },
-                    { name: "Jordan Lee", handle: "@jlee_tech", time: "4h ago", sentiment: "Neutral", color: "yellow", icon: "sentiment_neutral", text: "The iPhone 15 event was interesting. USB-C is finally here, Dynamic Island is expanding to base models. Not sure if I'll upgrade this year though.", likes: "1,203", retweets: "338", comments: "67", img: "5" },
-                    { name: "Sam Rivera", handle: "@samrivera", time: "6h ago", sentiment: "Negative", color: "red", icon: "sentiment_dissatisfied", text: "iPhone 15 prices are ridiculous. $1,199 for the base Pro? The camera upgrades aren't worth the price jump from the 14 Pro. Titanium feels like a marketing gimmick.", likes: "987", retweets: "275", comments: "54", img: "8" },
-                  ].map((tweet) => (
-                    <article key={tweet.handle} className="bg-app-bg dark:bg-app-surface-low border border-app-border/20 dark:border-app-border/20 rounded-xl p-6 shadow-sm hover:border-app-primary/30 transition-colors">
-                      <div className="flex items-start gap-4 mb-4">
-                        <img src={`https://i.pravatar.cc/96?img=${tweet.img}`} alt="User avatar" className="w-12 h-12 rounded-full object-cover flex-shrink-0" />
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-2 mb-1">
-                            <span className="font-bold text-app-main dark:text-app-main">{tweet.name}</span>
-                            <span className="text-app-muted dark:text-app-muted">{tweet.handle}</span>
-                            <span className="text-app-muted text-xs">· {tweet.time}</span>
-                            <span className={`ml-auto inline-flex items-center gap-1 border rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                              tweet.color === "green" ? "bg-green-50 dark:bg-green-900/40 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800/50" :
-                              tweet.color === "yellow" ? "bg-yellow-50 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800/50" :
-                              "bg-red-50 dark:bg-red-900/40 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800/50"
-                            }`}>
-                              <MaterialIcon name={tweet.icon} />
-                              {tweet.sentiment}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                      <p className="text-app-main dark:text-app-main mb-4 leading-relaxed">{tweet.text}</p>
-                      <div className="flex items-center gap-6 text-app-muted dark:text-app-muted">
-                        <button className="flex items-center gap-1.5 hover:text-app-primary dark:hover:text-app-primary transition-colors"><MaterialIcon name="favorite" /><span>{tweet.likes}</span></button>
-                        <button className="flex items-center gap-1.5 hover:text-app-primary dark:hover:text-app-primary transition-colors"><MaterialIcon name="sync" /><span>{tweet.retweets}</span></button>
-                        <button className="flex items-center gap-1.5 hover:text-app-primary dark:hover:text-app-primary transition-colors"><MaterialIcon name="chat_bubble" /><span>{tweet.comments}</span></button>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-
-                <div className="lg:col-span-4 space-y-8">
-                  <div className="bg-app-surface-low dark:bg-app-surface-low rounded-xl p-6 border border-app-border/10 dark:border-app-border/10">
-                    <h3 className="text-sm font-bold text-app-main dark:text-app-main mb-5">Volume Over Time</h3>
-                    <div className="flex items-end gap-3 h-32">
-                      {["60%", "45%", "80%", "55%", "70%", "35%", "90%"].map((h, i) => (
-                        <div key={i} className="flex-1 flex flex-col items-center gap-2">
-                          <div className="w-full rounded-t-sm" style={{ height: h, backgroundColor: i === 6 ? "#3525cd" : "rgba(53,37,205,0.2)" }} />
-                          {["Mon", "", "Wed", "", "Fri", "", "Sun"][i] && <span className="text-xs text-app-muted dark:text-app-muted">{["Mon", "", "Wed", "", "Fri", "", "Sun"][i]}</span>}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="bg-app-bg dark:bg-app-surface-low rounded-xl p-6 border border-app-border/20 dark:border-app-border/20">
-                    <h3 className="text-sm font-bold text-app-main dark:text-app-main mb-5">Key Keywords</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {["Camera", "Battery", "USB-C", "Titanium", "Dynamic Island", "Price", "Upgrade"].map((tag) => (
-                        <span key={tag} className="bg-app-surface-low dark:bg-app-surface-low text-app-primary dark:text-app-primary rounded-full px-3 py-1 text-xs font-semibold">{tag}</span>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="bg-app-primary dark:bg-app-primary rounded-xl p-6 text-white">
-                    <h3 className="text-base font-bold mb-2">Need Deeper Insights?</h3>
-                    <p className="text-sm opacity-80 mb-5">Unlock competitor comparisons, historical trends, and exportable reports.</p>
-                    <button className="w-full py-3 bg-white text-app-main dark:text-app-primary font-bold rounded-xl hover:bg-white/90 transition-colors">Compare Competitors</button>
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
-      </PageLayout>
+      </div>
     </div>
   );
 }

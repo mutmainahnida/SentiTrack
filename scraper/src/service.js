@@ -1,4 +1,5 @@
 const express = require('express');
+const cors = require('cors');
 const scraper = require('./scraper');
 const fs = require('fs');
 const path = require('path');
@@ -9,6 +10,7 @@ if (!fs.existsSync(RESULTS_DIR)) {
 }
 
 const app = express();
+app.use(cors({ origin: '*' }));
 app.use(express.json());
 
 async function getSessionStatus() {
@@ -589,7 +591,7 @@ app.get('/api/results', (_, res) => {
   res.json({ files });
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 4000;
 
 (async () => {
   await scraper.loadSession();
