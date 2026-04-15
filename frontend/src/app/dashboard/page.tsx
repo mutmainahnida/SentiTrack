@@ -120,31 +120,10 @@ function SentimentBarChart({ items }: { items: HistoryItem[] }) {
         })}
       </div> */}
 
-      {/* Per-analysis breakdown - minimalist horizontal bars */}
       {items.length > 1 && (
-        <div className="mt-4 pt-4 border-t border-app-border/10 dark:border-app-border/10">
-          <p className="text-[10px] font-bold text-app-muted dark:text-app-muted uppercase tracking-widest mb-3">
-            Per Analisis
-          </p>
-          <div className="space-y-3">
-            {items.map((item) => {
-              const score = computeOverallScore(item.positivePct, item.negativePct, item.neutralPct);
-              return (
-                <div key={item.jobId} className="flex items-center gap-3">
-                  <span className="text-xs text-app-muted dark:text-app-muted w-16 truncate font-medium shrink-0">
-                    {item.query}
-                  </span>
-                  <div className="flex-1 h-1.5 rounded-full bg-app-surface-low dark:bg-app-surface-low overflow-hidden flex">
-                    <div className="h-full bg-emerald-500" style={{ width: `${item.positivePct}%` }} />
-                    <div className="h-full bg-yellow-400" style={{ width: `${item.neutralPct}%` }} />
-                    <div className="h-full bg-red-400" style={{ width: `${item.negativePct}%` }} />
-                  </div>
-                  <span className="text-xs font-black text-app-muted dark:text-app-muted w-6 text-right shrink-0">{score}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        <p className="text-xs text-app-muted dark:text-app-muted mt-3">
+          Rata-rata dari {items.length} analisis
+        </p>
       )}
     </div>
   );
