@@ -203,5 +203,5 @@ Seeded via `prisma/seed.ts`:
 
 | Email | Password | Role |
 |-------|----------|------|
-| admin@sentitrack.local | Admin123! | admin |
-| user@sentitrack.local | User123! | user |
+| admin@gmail.com | admin123 | admin |
+| user@gmail.com | user12345 | user |

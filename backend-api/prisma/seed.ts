@@ -29,9 +29,6 @@ async function main() {
     });
     console.log('Roles seeded: admin (id=1), user (id=2)');
   }
-
-  // Update user roleIds to match new convention
-  // admin@gmail.com → roleId=1, user@gmail.com → roleId=2
   const adminPassword = await bcrypt.hash('admin123', 10);
   const userPassword = await bcrypt.hash('user12345', 10);
 
