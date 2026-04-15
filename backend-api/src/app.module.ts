@@ -1,10 +1,18 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { AuthModule } from './auth/auth.module';
+import { SearchModule } from './search/search.module';
 import { SentimentModule } from './sentiment/sentiment.module';
 
 @Module({
-  imports: [SentimentModule],
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true, envFilePath: ['../.env', '.env'] }),
+    AuthModule,
+    SearchModule,
+    SentimentModule,
+  ],
   controllers: [AppController],
   providers: [AppService],
 })
