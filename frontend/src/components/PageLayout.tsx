@@ -37,11 +37,10 @@ export default function PageLayout({ children }: PageLayoutProps) {
 
   return (
     <div
-      className={
-        isEntering
+      className={`w-full ${        isEntering
           ? "opacity-100 translate-x-0 transition-all duration-200 ease-out"
           : "opacity-0 translate-x-3 transition-all duration-150 ease-in"
-      }
+      }`}
     >
       {displayChildren}
     </div>

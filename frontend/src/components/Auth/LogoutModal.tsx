@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/stores/authStore";
-import MaterialIcon from "@/components/MaterialIcon";
+import MaterialIcon from "../MaterialIcon";
 
 export default function LogoutModal() {
   const router = useRouter();
@@ -20,23 +20,22 @@ export default function LogoutModal() {
 
   return (
     <div
-      className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm overflow-y-auto flex items-start justify-center sm:items-center"
+      className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
       onClick={(e) => {
         if (e.target === e.currentTarget) closeLogoutModal();
       }}
     >
-      <div className="w-full max-w-sm my-8">
-        <div className="w-full max-w-sm bg-white dark:bg-app-surface-low rounded-2xl shadow-2xl shadow-app-primary/20 border border-app-border-strong dark:border-app-border-strong overflow-hidden">
+      <div className="bg-white dark:bg-app-surface-low rounded-2xl shadow-2xl shadow-app-primary/20 border border-app-border-strong dark:border-app-border-strong overflow-hidden w-full max-w-sm max-h-[90vh] overflow-y-auto">
           {/* Header */}
           <div className="flex flex-col items-center px-8 pt-10 pb-6 text-center">
             <div className="w-14 h-14 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-4">
               <MaterialIcon name="logout" className="text-red-500 text-2xl" />
             </div>
             <h2 className="text-xl font-black text-app-main dark:text-app-main">
-              Sign Out
+              Logout
             </h2>
             <p className="text-sm text-app-muted dark:text-app-muted mt-2">
-              Are you sure you want to sign out of your account?
+              Are you sure you want to logout out of your account?
             </p>
           </div>
 
@@ -59,11 +58,10 @@ export default function LogoutModal() {
                   <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 </>
               ) : (
-                "Sign Out"
+                "Logout"
               )}
             </button>
           </div>
-        </div>
       </div>
     </div>
   );

@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore, apiLogin } from "@/stores/authStore";
-import MaterialIcon from "@/components/MaterialIcon";
+import MaterialIcon from "../MaterialIcon";
 
 interface LoginModalProps {
   onSwitchToRegister?: () => void;
@@ -24,7 +24,6 @@ export default function LoginModal({ onSwitchToRegister }: LoginModalProps) {
   const emailRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
 
-  // Focus first field when modal opens
   useEffect(() => {
     if (isLoginModalOpen) {
       setError(null);
@@ -46,7 +45,6 @@ export default function LoginModal({ onSwitchToRegister }: LoginModalProps) {
     try {
       const tokens = await apiLogin(email, password);
 
-      // Persist to localStorage
       localStorage.setItem(
         "sentitrack_auth",
         JSON.stringify({
@@ -58,7 +56,6 @@ export default function LoginModal({ onSwitchToRegister }: LoginModalProps) {
         })
       );
 
-      // Update store state
       useAuthStore.setState({
         isAuthenticated: true,
         isLoginModalOpen: false,
@@ -84,102 +81,102 @@ export default function LoginModal({ onSwitchToRegister }: LoginModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm overflow-y-auto flex items-start justify-center sm:items-center"
+      className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
       onClick={(e) => {
         if (e.target === e.currentTarget) closeLoginModal();
       }}
     >
-      <div className="w-full max-w-md my-8">
-        <div className="w-full max-w-md bg-white dark:bg-app-surface-low rounded-2xl shadow-2xl shadow-app-primary/20 border border-app-border-strong dark:border-app-border-strong overflow-hidden">
-          {/* Header */}
-          <div className="flex items-center justify-between px-8 pt-8 pb-0">
-            <div>
-              <h2 className="text-2xl font-black text-app-main dark:text-app-main">
-                Welcome Back
-              </h2>
-              <p className="text-sm text-app-muted dark:text-app-muted mt-1">
-                Sign in to your SentiTrack account
-              </p>
-            </div>
-            <button
-              onClick={closeLoginModal}
-              className="p-2 rounded-full hover:bg-app-surface-low dark:hover:bg-app-surface-low transition-colors text-app-muted dark:text-app-muted"
-            >
-              <MaterialIcon name="close" />
-            </button>
-          </div>
-
-          {/* Form */}
-          <form onSubmit={handleLogin} className="px-8 py-6 space-y-5">
-            {error && (
-              <div className="flex items-center gap-2 px-4 py-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-sm text-red-600 dark:text-red-400">
-                <MaterialIcon name="error_outline" className="text-base flex-shrink-0" />
-                {error}
-              </div>
-            )}
-
-            <div>
-              <label className="block text-sm font-semibold text-app-main dark:text-app-main mb-2">
-                Email
-              </label>
-              <input
-                ref={emailRef}
-                type="email"
-                required
-                placeholder="you@example.com"
-                className="w-full px-4 py-3 bg-app-surface-low dark:bg-app-bg border border-app-border-strong dark:border-app-border-strong rounded-xl text-app-main dark:text-app-main placeholder:text-app-muted/60 dark:placeholder:text-app-muted/60 focus:outline-none focus:ring-2 focus:ring-app-primary/40"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-app-main dark:text-app-main mb-2">
-                Password
-              </label>
-              <div className="relative">
-                <input
-                  ref={passwordRef}
-                  type={showPassword ? "text" : "password"}
-                  required
-                  placeholder="Enter your password"
-                  className="w-full px-4 py-3 pr-12 bg-app-surface-low dark:bg-app-bg border border-app-border-strong dark:border-app-border-strong rounded-xl text-app-main dark:text-app-main placeholder:text-app-muted/60 dark:placeholder:text-app-muted/60 focus:outline-none focus:ring-2 focus:ring-app-primary/40"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-app-muted dark:text-app-muted hover:text-app-primary dark:hover:text-app-primary transition-colors"
-                >
-                  <MaterialIcon name={showPassword ? "visibility" : "visibility_off"} />
-                </button>
-              </div>
-            </div>
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full py-3 bg-app-primary dark:bg-app-primary text-white font-bold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              {isLoading ? (
-                <>
-                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Signing in...
-                </>
-              ) : (
-                "Sign In"
-              )}
-            </button>
-          </form>
-
-          {/* Footer */}
-          <div className="px-8 pb-8 text-center">
-            <p className="text-sm text-app-muted dark:text-app-muted">
-              Don&apos;t have an account?{" "}
-              <button
-                type="button"
-                onClick={onSwitchToRegister}
-                className="text-app-primary dark:text-app-primary font-semibold hover:underline"
-              >
-                Sign up
-              </button>
+      <div className="bg-white dark:bg-app-surface-low rounded-2xl shadow-2xl shadow-app-primary/20 border border-app-border-strong dark:border-app-border-strong overflow-hidden w-full max-w-md max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between px-8 pt-8 pb-0">
+          <div>
+            <h2 className="text-2xl font-black text-app-main dark:text-app-main">
+              Welcome Back
+            </h2>
+            <p className="text-sm text-app-muted dark:text-app-muted mt-1">
+              Sign in to your SentiTrack account
             </p>
           </div>
+          <button
+            onClick={closeLoginModal}
+            className="p-2 rounded-full hover:bg-app-surface-low dark:hover:bg-app-surface-low transition-colors text-app-muted dark:text-app-muted"
+          >
+            <MaterialIcon name="close" />
+          </button>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleLogin} className="px-8 py-6 space-y-5">
+          {error && (
+            <div className="flex items-center gap-2 px-4 py-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-sm text-red-600 dark:text-red-400">
+              <MaterialIcon name="error_outline" className="text-base flex-shrink-0" />
+              {error}
+            </div>
+          )}
+
+          <div>
+            <label className="block text-sm font-semibold text-app-main dark:text-app-main mb-2">
+              Email
+            </label>
+            <input
+              ref={emailRef}
+              type="email"
+              required
+              placeholder="you@example.com"
+              className="w-full px-4 py-3 bg-app-surface-low dark:bg-app-bg border border-app-border-strong dark:border-app-border-strong rounded-xl text-app-main dark:text-app-main placeholder:text-app-muted/60 dark:placeholder:text-app-muted/60 focus:outline-none focus:ring-2 focus:ring-app-primary/40"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-app-main dark:text-app-main mb-2">
+              Password
+            </label>
+            <div className="relative">
+              <input
+                ref={passwordRef}
+                type={showPassword ? "text" : "password"}
+                required
+                placeholder="Enter your password"
+                className="w-full px-4 py-3 pr-12 bg-app-surface-low dark:bg-app-bg border border-app-border-strong dark:border-app-border-strong rounded-xl text-app-main dark:text-app-main placeholder:text-app-muted/60 dark:placeholder:text-app-muted/60 focus:outline-none focus:ring-2 focus:ring-app-primary/40"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-app-muted dark:text-app-muted hover:text-app-primary dark:hover:text-app-primary transition-colors"
+              >
+                <MaterialIcon name={showPassword ? "visibility" : "visibility_off"} />
+              </button>
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full py-3 bg-app-primary dark:bg-app-primary text-white font-bold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {isLoading ? (
+              <>
+                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Signing in...
+              </>
+            ) : (
+              "Sign In"
+            )}
+          </button>
+        </form>
+
+        {/* Footer */}
+        <div className="px-8 pb-8 text-center">
+          <p className="text-sm text-app-muted dark:text-app-muted">
+            Don&apos;t have an account?{" "}
+            <button
+              type="button"
+              onClick={onSwitchToRegister}
+              className="text-app-primary dark:text-app-primary font-semibold hover:underline"
+            >
+              Sign up
+            </button>
+          </p>
         </div>
       </div>
     </div>
