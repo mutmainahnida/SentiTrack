@@ -1,11 +1,52 @@
 "use client";
 
+import { Suspense, useState, useEffect, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useAuthStore } from "@/stores/authStore";
 import Sidebar from "@/components/Sidebar";
 import TopBar from "@/components/TopBar";
 import MaterialIcon from "@/components/MaterialIcon";
 import PageLayout from "@/components/PageLayout";
 
-export default function DashboardPage() {
+function DashboardContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { isAuthenticated, pendingSearchQuery, setPendingSearchQuery, markPendingSearchExecuted, openLoginModal } = useAuthStore();
+  // Initialize search query from URL param if present (render-time, no effect needed)
+  const urlQuery = searchParams.get("q") ?? "";
+  const [searchQuery, setSearchQuery] = useState("");
+  const lastProcessedRef = useRef<string | null>(null);
+
+  // Initialize from URL on mount (capture value once to avoid infinite effect)
+  const [initialized, setInitialized] = useState(false);
+  useEffect(() => {
+    if (!initialized && urlQuery) {
+      setSearchQuery(urlQuery);
+      setInitialized(true);
+    }
+  }, [initialized, urlQuery]);
+
+  // Handle deferred search after login
+  useEffect(() => {
+    if (isAuthenticated && pendingSearchQuery && pendingSearchQuery !== lastProcessedRef.current) {
+      const q = pendingSearchQuery;
+      lastProcessedRef.current = q;
+      markPendingSearchExecuted();
+      setPendingSearchQuery(null);
+      // No setIsLoading here — navigation handles the UX
+      router.push(`/search?q=${encodeURIComponent(q)}`);
+    }
+  }, [isAuthenticated, pendingSearchQuery, markPendingSearchExecuted, setPendingSearchQuery, router]);
+
+  const handleSearch = () => {
+    if (!searchQuery.trim()) return;
+    if (!isAuthenticated) {
+      setPendingSearchQuery(searchQuery.trim());
+      openLoginModal("search");
+    } else {
+      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  };
 
   return (
     <div className="flex h-screen overflow-hidden bg-app-bg dark:bg-app-bg">
@@ -47,9 +88,15 @@ export default function DashboardPage() {
                 <input
                   type="text"
                   placeholder="Cari topik, brand, atau akun Twitter..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
                   className="flex-1 bg-transparent text-app-main dark:text-app-main text-base focus:outline-none placeholder:text-app-muted/60 dark:placeholder:text-app-muted/60"
                 />
-                <button className="bg-app-primary dark:bg-app-primary hover:bg-app-primary dark:hover:bg-app-primary text-white px-8 py-3 rounded-lg font-bold text-sm transition-colors">
+                <button
+                  onClick={handleSearch}
+                  className="bg-app-primary dark:bg-app-primary hover:bg-app-primary dark:hover:bg-app-primary text-white px-8 py-3 rounded-lg font-bold text-sm transition-colors"
+                >
                   Analisis
                 </button>
               </div>
@@ -259,5 +306,13 @@ export default function DashboardPage() {
       </div>
       </PageLayout>
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={null}>
+      <DashboardContent />
+    </Suspense>
   );
 }

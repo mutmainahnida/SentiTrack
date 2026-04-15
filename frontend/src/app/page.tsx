@@ -1,10 +1,30 @@
 "use client";
 
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuthStore } from "@/stores/authStore";
 import { useTheme } from "@/components/ThemeProvider";
 import MaterialIcon from "@/components/MaterialIcon";
 
 export default function LandingPage() {
   const { theme, toggleTheme } = useTheme();
+  const router = useRouter();
+  const { isAuthenticated, openLoginModal, setPendingSearchQuery } = useAuthStore();
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const handleAnalyze = () => {
+    if (!searchQuery.trim()) return;
+    if (!isAuthenticated) {
+      setPendingSearchQuery(searchQuery.trim());
+      openLoginModal("search");
+    } else {
+      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  };
+
+  const handleGetStarted = () => {
+    openLoginModal("topbar");
+  };
 
   return (
     <div className="min-h-screen bg-app-bg dark:bg-app-bg text-app-main dark:text-app-main">
@@ -48,12 +68,18 @@ export default function LandingPage() {
             </button>
 
             {/* Login */}
-            <button className="px-4 py-2 text-sm font-semibold text-app-muted dark:text-app-muted border border-app-border-strong dark:border-app-border-strong rounded-lg hover:text-app-main dark:hover:text-app-main transition-colors">
+            <button
+              onClick={() => openLoginModal("topbar")}
+              className="px-4 py-2 text-sm font-semibold text-app-muted dark:text-app-muted border border-app-border-strong dark:border-app-border-strong rounded-lg hover:text-app-main dark:hover:text-app-main transition-colors"
+            >
               Login
             </button>
 
             {/* Get Started */}
-            <button className="px-4 py-2 text-sm font-bold bg-app-primary dark:bg-app-primary text-white rounded-lg hover:opacity-90 transition-opacity">
+            <button
+              onClick={handleGetStarted}
+              className="px-4 py-2 text-sm font-bold bg-app-primary dark:bg-app-primary text-white rounded-lg hover:opacity-90 transition-opacity"
+            >
               Get Started
             </button>
           </div>
@@ -91,10 +117,16 @@ export default function LandingPage() {
               <input
                 type="text"
                 placeholder="Cari topik, brand, atau akun Twitter..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleAnalyze(); }}
                 className="flex-1 py-3 bg-transparent text-app-main dark:text-app-main text-base focus:outline-none placeholder:text-app-muted dark:placeholder:text-app-muted"
               />
             </div>
-            <button className="px-8 py-3 bg-app-primary dark:bg-app-primary text-white rounded-lg font-bold text-sm hover:opacity-90 transition-opacity whitespace-nowrap">
+            <button
+              onClick={handleAnalyze}
+              className="px-8 py-3 bg-app-primary dark:bg-app-primary text-white rounded-lg font-bold text-sm hover:opacity-90 transition-opacity whitespace-nowrap"
+            >
               Analyze Now
             </button>
           </div>
