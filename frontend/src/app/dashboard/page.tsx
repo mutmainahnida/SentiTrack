@@ -337,7 +337,7 @@ function DashboardContent() {
               {/* Bento Section */}
               <section className="grid grid-cols-12 gap-6 mb-12">
                 {/* Left: Sentiment Overview */}
-                <div className="col-span-8 bg-app-surface-low dark:bg-app-surface-low rounded-xl p-8 border border-app-border-strong dark:border-app-border-strong">
+                <div className="col-span-12 bg-app-surface-low dark:bg-app-surface-low rounded-xl p-8 border border-app-border-strong dark:border-app-border-strong">
                   <div className="flex items-start justify-between mb-4">
                     <div>
                       <h2 className="text-xl font-black text-app-main dark:text-app-main tracking-tight mb-1">
@@ -369,22 +369,6 @@ function DashboardContent() {
                   )}
                 </div>
 
-                {/* Right: Quick Actions */}
-                <div className="col-span-4 bg-primary dark:bg-primary rounded-xl p-8 flex flex-col justify-between">
-                  <div>
-                    <MaterialIcon name="auto_awesome" filled={1} className="text-3xl mb-4" />
-                    <h2 className="text-xl font-black mb-2">Analisis Cepat</h2>
-                    <p className="text-sm opacity-90 leading-relaxed">
-                      Lacak sentimen topik apa pun secara real-time dengan akurasi AI terbaru.
-                    </p>
-                  </div>
-                  <button
-                    onClick={handleSearch}
-                    className="mt-6 bg-white/20 hover:bg-white/30 text-white px-6 py-3 rounded-lg font-bold text-sm transition-colors"
-                  >
-                    Mulai Sekarang
-                  </button>
-                </div>
               </section>
 
               {/* Recent Analytics Table */}
