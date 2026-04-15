@@ -6,7 +6,6 @@ COPY prisma ./prisma
 RUN npx prisma generate
 COPY . .
 RUN npm run build
-# Compile seed.ts to dist/prisma/ for runtime use
 RUN npx tsc prisma/seed.ts --outDir dist/prisma --module commonjs --target es2020 --esModuleInterop --skipLibCheck
 RUN npm ci --omit=dev && npm cache clean --force
 

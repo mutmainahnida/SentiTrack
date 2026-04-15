@@ -9,7 +9,7 @@ async function bootstrap() {
   app.enableCors({
     origin: [
       process.env.FRONTEND_URL ?? 'http://localhost:3000',
-      process.env.SCRAPER_BASE_URL ?? 'http://localhost:4000',
+      `http://localhost:${process.env.FRONTEND_PORT ?? '3000'}`,
     ],
     credentials: true,
   });
@@ -23,7 +23,7 @@ async function bootstrap() {
       transform: true,
     }),
   );
-  const port = process.env.PORT ?? 5000;
+  const port = process.env.BACKEND_PORT ?? 5000;
   await app.listen(port);
 }
 

@@ -8,7 +8,7 @@ X/Twitter sentiment analysis tracker.
 |---------|-------|------|
 | Frontend | Next.js 16 (React 19) | 3000 |
 | Backend API | NestJS + BullMQ + Redis + Prisma | 5000 |
-| Scraper | Express + Puppeteer | 3000 |
+| Scraper | Express + Puppeteer | 5001 |
 | Redis | Redis Alpine | 6380 → 6379 |
 | PostgreSQL | PostgreSQL 16 Alpine | 5432 |
 
@@ -96,6 +96,11 @@ docker compose down
 All services reference `.env` at the project root. Copy and adjust values as needed:
 
 ```env
+# Ports
+BACKEND_PORT=5000
+SCRAPER_PORT=5001
+FRONTEND_PORT=3000
+
 # Database
 DATABASE_URL=postgresql://postgres:236ndntm@localhost:5432/sentitrack?schema=public
 
@@ -103,9 +108,9 @@ DATABASE_URL=postgresql://postgres:236ndntm@localhost:5432/sentitrack?schema=pub
 REDIS_HOST=localhost
 REDIS_PORT=6379
 
-# Backend
-PORT=5000
-SCRAPER_BASE_URL=http://localhost:3000
+# Services
+SCRAPER_BASE_URL=http://localhost:5001
+FRONTEND_URL=http://localhost:3000
 
 # Auth
 JWT_ACCESS_SECRET=your_access_secret

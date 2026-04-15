@@ -75,7 +75,7 @@ Tokens are obtained via `/api/auth/login` or `/api/auth/refresh`.
 | backend-api | 5000 | NestJS application |
 | postgres | 5432 | PostgreSQL database |
 | redis | 6379 | BullMQ job queue |
-| scraper | 3000 | Puppeteer tweet scraper |
+| scraper | 5001 | Puppeteer tweet scraper |
 | frontend | 3000 | Next.js web app |
 
 ## Rate Limiting

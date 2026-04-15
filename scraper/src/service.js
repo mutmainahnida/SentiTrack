@@ -593,7 +593,7 @@ app.get('/api/results', (_, res) => {
   res.json({ files });
 });
 
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.SCRAPER_PORT || 5001;
 
 (async () => {
   await scraper.loadSession();
