@@ -23,7 +23,7 @@ describe('SentimentService', () => {
   let repository: jest.Mocked<
     Pick<
       SentimentRepository,
-      'createQueuedJob' | 'markProcessing' | 'markCompleted' | 'markFailed'
+      'createQueuedJob' | 'markProcessing' | 'markCompleted' | 'markFailed' | 'findHistory'
     >
   >;
 
@@ -43,6 +43,7 @@ describe('SentimentService', () => {
       markProcessing: jest.fn(),
       markCompleted: jest.fn(),
       markFailed: jest.fn(),
+      findHistory: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -69,7 +70,7 @@ describe('SentimentService', () => {
     };
     queueService.enqueueAndWait.mockResolvedValue(result);
 
-    const response = await service.requestSentiment({ query: 'AI', limit: 10 });
+    const response = await service.requestSentiment({ query: 'AI', limit: 10 }, 'user-1');
 
     expect(repository.createQueuedJob).toHaveBeenCalledWith(
       expect.objectContaining({ query: 'AI', product: 'Top', limit: 10 }),
@@ -88,7 +89,7 @@ describe('SentimentService', () => {
     );
 
     await expect(
-      service.requestSentiment({ query: 'AI' }),
+      service.requestSentiment({ query: 'AI' }, 'user-1'),
     ).rejects.toBeInstanceOf(JobRequestTimeoutError);
   });
 
@@ -98,7 +99,7 @@ describe('SentimentService', () => {
     );
 
     await expect(
-      service.requestSentiment({ query: 'AI' }),
+      service.requestSentiment({ query: 'AI' }, 'user-1'),
     ).rejects.toBeInstanceOf(JobRequestFailedError);
   });
 
@@ -119,7 +120,20 @@ describe('SentimentService', () => {
       query: 'ignored',
       product: 'Top',
       count: 1,
-      tweets: [],
+      tweets: [
+        {
+          id: '1',
+          text: 'AI is great',
+          username: 'user1',
+          name: 'User One',
+          timestamp: 1234567890,
+          views: 100,
+          likes: 10,
+          retweets: 5,
+          replies: 1,
+          permanentUrl: 'https://x.com/u/user1/status/1',
+        },
+      ],
     });
     geminiService.analyzeTweets.mockResolvedValue(analyzed);
 

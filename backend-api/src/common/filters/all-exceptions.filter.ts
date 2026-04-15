@@ -32,8 +32,12 @@ export class AllExceptionsFilter implements ExceptionFilter {
         message = exception.message;
       }
     } else if (exception instanceof Error) {
-      // In production, we might want to log this error and hide the message
-      message = exception.message;
+      // Handle AggregateError and other error-like objects
+      const msg = exception.message || String(exception);
+      message = msg === '[object Object]' || !msg ? JSON.stringify(exception) : msg;
+    } else {
+      // Plain object or unknown
+      message = typeof exception === 'object' ? JSON.stringify(exception) : String(exception);
     }
 
     response.status(status).json(ApiResponseFactory.error(message));

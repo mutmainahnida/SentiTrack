@@ -45,6 +45,7 @@ describe('SentimentRepository', () => {
 
   it('should create queued jobs', async () => {
     await repository.createQueuedJob({
+      userId: 'user-1',
       jobId: 'sentiment_1',
       query: 'AI',
       product: 'Top',

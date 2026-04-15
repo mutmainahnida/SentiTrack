@@ -28,6 +28,7 @@ export class SentimentService {
 
   async requestSentiment(
     dto: CreateSentimentDto,
+    userId: string,
   ): Promise<JobResponse<SentimentResult>> {
     const jobId = `sentiment_${Date.now()}_${randomUUID().slice(0, 8)}`;
     const jobData: SentimentJobData = {
@@ -38,6 +39,7 @@ export class SentimentService {
     };
 
     await this.sentimentRepository.createQueuedJob({
+      userId,
       jobId,
       query: jobData.query,
       product: jobData.product,
@@ -77,11 +79,43 @@ export class SentimentService {
     const attempts = job.attemptsMade + 1;
     await this.sentimentRepository.markProcessing(job.data.jobId, attempts);
 
-    const scraped = await this.scraperService.fetchTweets(
-      job.data.query,
-      job.data.product,
-      job.data.limit,
-    );
+    let scraped: Awaited<ReturnType<typeof this.scraperService.fetchTweets>>;
+    try {
+      scraped = await this.scraperService.fetchTweets(
+        job.data.query,
+        job.data.product,
+        job.data.limit,
+      );
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : JSON.stringify(err);
+      this.logger.error(`Scraper failed for job ${job.data.jobId}: ${msg}`);
+      throw new Error(`Scraper error: ${msg}`);
+    }
+
+    if (scraped.tweets.length === 0) {
+      this.logger.warn(
+        `Sentiment job ${job.data.jobId}: scraper returned 0 tweets for query "${job.data.query}". Marking as completed with empty result.`,
+      );
+      const emptyResult: SentimentResult = {
+        query: job.data.query,
+        total: 0,
+        summary: { positive: 0, negative: 0, neutral: 100 },
+        topInfluential: [],
+        tweets: [],
+        completedAt: new Date().toISOString(),
+      };
+      await this.sentimentRepository.markCompleted(
+        job.data.jobId,
+        emptyResult,
+        attempts,
+      );
+      await this.queueService.storeResult(
+        QUEUE_NAMES.SENTIMENT,
+        job.data.jobId,
+        emptyResult,
+      );
+      return;
+    }
 
     const result = await this.geminiService.analyzeTweets(scraped.tweets);
     result.query = job.data.query;
@@ -109,5 +143,9 @@ export class SentimentService {
       message,
       job.attemptsMade + 1,
     );
+  }
+
+  async getHistory(userId: string, isAdmin: boolean) {
+    return this.sentimentRepository.findHistory(userId, isAdmin);
   }
 }

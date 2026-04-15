@@ -100,8 +100,11 @@ export class QueueService {
         .catch((err: Error) => {
           clearTimeout(timeout);
           void queueEvents.close();
-          this.logger.error(`Job ${jobId} failed: ${err.message}`);
-          reject(err);
+          const msg = err.message === '[object Object]' || !err.message
+            ? JSON.stringify(err)
+            : err.message;
+          this.logger.error(`Job ${jobId} failed: ${msg}`);
+          reject(new Error(msg));
         });
     });
   }

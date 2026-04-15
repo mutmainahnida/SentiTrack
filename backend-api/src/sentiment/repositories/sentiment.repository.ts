@@ -40,6 +40,7 @@ export class SentimentRepository {
   }
 
   async createQueuedJob(data: {
+    userId: string;
     jobId: string;
     query: string;
     product: string;
@@ -47,6 +48,7 @@ export class SentimentRepository {
   }) {
     return this.prisma.sentimentJobHistory.create({
       data: {
+        userId: data.userId,
         jobId: data.jobId,
         query: data.query,
         product: data.product,
@@ -86,6 +88,14 @@ export class SentimentRepository {
         errorMessage: null,
         completedAt: new Date(result.completedAt),
       },
+    });
+  }
+
+  async findHistory(userId: string, isAdmin: boolean) {
+    return this.prisma.sentimentJobHistory.findMany({
+      where: isAdmin ? {} : { userId },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
     });
   }
 

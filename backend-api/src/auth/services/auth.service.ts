@@ -1,17 +1,14 @@
 import {
   ConflictException,
   Injectable,
-  InternalServerErrorException,
   UnauthorizedException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
-import { randomUUID } from 'crypto';
 import { LoginDto } from '../dto/login.dto';
 import { RegisterDto } from '../dto/register.dto';
 import { AuthRepository } from '../repositories/auth.repository';
-import { TokenSessionService } from './token-session.service';
-import { TokenResponse } from '../types/auth-response.type';
-import { AuthResponse } from '../types/auth-response.type';
+import { TokenSessionService, TokenPayload } from './token-session.service';
+import { TokenResponse, AuthResponse } from '../types/auth-response.type';
 
 @Injectable()
 export class AuthService {
@@ -38,26 +35,9 @@ export class AuthService {
       password: hashedPassword,
     });
 
-    const sessionId = randomUUID();
-    const accessToken = this.tokenSessionService.signAccessToken({
-      sub: user.id,
-      sessionId,
-    });
-    const refreshToken = this.tokenSessionService.signRefreshToken({
-      sub: user.id,
-      sessionId,
-    });
-
-    try {
-      await this.tokenSessionService.storeTokensInRedis(
-        sessionId,
-        accessToken,
-        refreshToken,
-        user.id,
-      );
-    } catch {
-      throw new InternalServerErrorException('Authentication failed');
-    }
+    const payload: TokenPayload = { email: user.email, roleId: user.roleId };
+    const accessToken = this.tokenSessionService.signAccessToken(payload);
+    const refreshToken = this.tokenSessionService.signRefreshToken(payload);
 
     return {
       user: {
@@ -66,7 +46,6 @@ export class AuthService {
         email: user.email,
         createdAt: user.createdAt,
       },
-      sessionId,
       accessToken,
       refreshToken,
       accessTokenExpiresIn: 25200,
@@ -87,26 +66,9 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password');
     }
 
-    const sessionId = randomUUID();
-    const accessToken = this.tokenSessionService.signAccessToken({
-      sub: user.id,
-      sessionId,
-    });
-    const refreshToken = this.tokenSessionService.signRefreshToken({
-      sub: user.id,
-      sessionId,
-    });
-
-    try {
-      await this.tokenSessionService.storeTokensInRedis(
-        sessionId,
-        accessToken,
-        refreshToken,
-        user.id,
-      );
-    } catch {
-      throw new InternalServerErrorException('Authentication failed');
-    }
+    const payload: TokenPayload = { email: user.email, roleId: user.roleId };
+    const accessToken = this.tokenSessionService.signAccessToken(payload);
+    const refreshToken = this.tokenSessionService.signRefreshToken(payload);
 
     return {
       accessToken,
@@ -117,40 +79,14 @@ export class AuthService {
   }
 
   async refresh(refreshToken: string): Promise<TokenResponse> {
-    let payload: { sub: string; sessionId: string };
+    const payload = this.tokenSessionService.verifyRefreshToken(refreshToken);
+    const tokens = this.tokenSessionService.rotateTokens(payload.email, payload.roleId);
 
-    try {
-      payload = await this.tokenSessionService.verifyRefreshToken(refreshToken);
-    } catch {
-      throw new UnauthorizedException('Invalid JWT signature or expired');
-    }
-
-    const isValidInRedis = await this.tokenSessionService.validateRefreshTokenAgainstRedis(
-      payload.sub,
-      refreshToken,
-    );
-
-    if (!isValidInRedis) {
-      await this.tokenSessionService.deleteTokensFromRedis(payload.sub);
-      throw new UnauthorizedException('Invalid Token');
-    }
-
-    try {
-      const tokens = await this.tokenSessionService.rotateTokens(
-        payload.sessionId,
-        payload.sub,
-      );
-      return {
-        accessToken: tokens.accessToken,
-        refreshToken: tokens.refreshToken,
-        accessTokenExpiresIn: 25200,
-        refreshTokenExpiresIn: 2592000,
-      };
-    } catch (error) {
-      if (error instanceof UnauthorizedException) {
-        throw error;
-      }
-      throw new InternalServerErrorException('Failed to rotate tokens');
-    }
+    return {
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      accessTokenExpiresIn: 25200,
+      refreshTokenExpiresIn: 2592000,
+    };
   }
 }

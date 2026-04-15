@@ -33,14 +33,20 @@ services:
       context: ./scraper
     container_name: sentitrack-scraper
     ports:
-      - "3001:3001"
+      - "3000:3000"
     env_file:
       - .env
     environment:
-      - PORT=3001
+      - PORT=3000
     volumes:
       - ./scraper/results:/app/results
       - ./scraper/cookies.json:/app/cookies.json
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   backend-api:
     build:
@@ -52,9 +58,11 @@ services:
       - .env
     environment:
       - PORT=5000
+      - NODE_ENV=production
+      - REQUIRED=JWT_ACCESS_SECRET,JWT_REFRESH_SECRET,DATABASE_URL,REDIS_HOST,REDIS_PORT,SCRAPER_BASE_URL,GEMINI_API_KEY
       - REDIS_HOST=sentitrack-redis
       - REDIS_PORT=6379
-      - SCRAPER_BASE_URL=http://sentitrack-scraper:3001
+      - SCRAPER_BASE_URL=http://sentitrack-scraper:3000
       - DATABASE_URL=postgresql://postgres:236ndntm@sentitrack-postgres:5432/sentitrack?schema=public
     depends_on:
       redis:
@@ -62,7 +70,7 @@ services:
       postgres:
         condition: service_healthy
       scraper:
-        condition: service_started
+        condition: service_healthy
 
   frontend:
     build:

@@ -5,6 +5,8 @@ import { AuthController } from './controllers/auth.controller';
 import { AuthRepository } from './repositories/auth.repository';
 import { AuthService } from './services/auth.service';
 import { TokenSessionService } from './services/token-session.service';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { RolesGuard } from './guards/roles.guard';
 
 @Module({
   imports: [
@@ -17,7 +19,7 @@ import { TokenSessionService } from './services/token-session.service';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthRepository, AuthService, TokenSessionService],
-  exports: [AuthService, TokenSessionService],
+  providers: [AuthRepository, AuthService, TokenSessionService, JwtAuthGuard, RolesGuard],
+  exports: [AuthService, TokenSessionService, JwtAuthGuard, RolesGuard, JwtModule],
 })
 export class AuthModule {}

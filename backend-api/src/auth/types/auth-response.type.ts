@@ -5,7 +5,6 @@ export interface AuthResponse {
     email: string;
     createdAt: Date;
   };
-  sessionId: string;
   accessToken: string;
   refreshToken: string;
   accessTokenExpiresIn: number;
