@@ -1,0 +1,90 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum JobStatus {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model SearchJobHistory {
+  id             String    @id @default(cuid())
+  jobId          String    @unique
+  query          String
+  product        String    @default("Top")
+  requestedLimit Int
+  total          Int       @default(0)
+  attempts       Int       @default(0)
+
+  status         JobStatus @default(QUEUED)
+  result         Json?
+  errorMessage   String?   
+  startedAt      DateTime?
+  completedAt    DateTime?
+
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([query])
+  @@index([status, createdAt])
+}
+
+model SentimentJobHistory {
+  id             String    @id @default(cuid())
+  jobId          String    @unique
+  query          String
+  product        String    @default("Top")
+  requestedLimit Int
+  total          Int       @default(0)
+  attempts       Int       @default(0)
+
+  positivePct    Int       @default(0)
+  negativePct    Int       @default(0)
+  neutralPct     Int       @default(0)
+
+  status         JobStatus @default(QUEUED)
+  result         Json?
+  errorMessage   String?
+  startedAt      DateTime?
+  completedAt    DateTime?
+
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@index([query])
+  @@index([status, createdAt])
+}
+
+model User {
+  id           String       @id @default(cuid())
+  name         String
+  email        String       @unique
+  passwordHash String
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  sessions     AuthSession[]
+
+  @@index([email])
+}
+
+model AuthSession {
+  id                      String    @id @default(cuid())
+  userId                  String
+  user                    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessTokenExpiresAt    DateTime
+  refreshTokenExpiresAt   DateTime
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+  lastUsedAt              DateTime  @default(now())
+  revokedAt               DateTime?
+
+  @@index([userId, createdAt])
+  @@index([refreshTokenExpiresAt])
+}
