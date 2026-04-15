@@ -32,7 +32,6 @@ export class AllExceptionsFilter implements ExceptionFilter {
         message = exception.message;
       }
     } else if (exception instanceof Error) {
-      // In production, we might want to log this error and hide the message
       message = exception.message;
     }
 

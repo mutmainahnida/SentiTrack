@@ -4,12 +4,15 @@
   "description": "X/Twitter scraper service for sentiment analysis",
   "main": "src/service.js",
   "scripts": {
-    "start": "node src/service.js"
+    "start": "dotenv -e ../.env -- node src/service.js"
   },
   "dependencies": {
     "@the-convocation/twitter-scraper": "^0.22.3",
     "express": "^4.18.2",
     "puppeteer": "^22.10.0",
     "tough-cookie": "^6.0.1"
+  },
+  "devDependencies": {
+    "dotenv-cli": "^11.0.0"
   }
 }

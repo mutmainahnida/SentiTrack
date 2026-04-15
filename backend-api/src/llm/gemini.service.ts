@@ -58,8 +58,7 @@ export class GeminiService {
     if (!apiKey) throw new Error('GEMINI_API_KEY not configured');
 
     this.ai = new GoogleGenAI({ apiKey });
-    this.model =
-      this.config.get<string>('GEMINI_MODEL') ?? 'gemma-3-27b-it';
+    this.model = this.config.get<string>('GEMINI_MODEL') ?? 'gemma-3-27b-it';
   }
 
   async analyzeTweets(tweets: ScrapedTweet[]): Promise<SentimentResult> {
@@ -96,7 +95,6 @@ Respond ONLY with the JSON array, no extra text.`;
 
     try {
       let jsonStr = raw.trim();
-      // Strip markdown code fences if present
       if (jsonStr.startsWith('```')) {
         const firstNewline = jsonStr.indexOf('\n');
         const lastBacktick = jsonStr.lastIndexOf('```');

@@ -83,7 +83,6 @@ export class OpenRouterService {
     } catch (err) {
       if (retries <= 0) throw err;
       const msg = String(err);
-      // Check both error message string and Axios error status code
       const isOverloaded =
         msg.includes('503') ||
         msg.includes('overloaded') ||
