@@ -1,120 +1,56 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { Job } from 'bullmq';
 import { SentimentProcessor } from './sentiment.processor';
-import { ScraperService } from '../../scraper/scraper.service';
-import { OpenRouterService } from '../../llm/openrouter.service';
-import { QueueService } from '../../queue/queue.service';
+import { SentimentService } from '../services/sentiment.service';
+import type { SentimentJobData } from '../../queue/interfaces/sentiment-job.interface';
 
 describe('SentimentProcessor', () => {
   let processor: SentimentProcessor;
-  let mockScraper: jest.Mocked<ScraperService>;
-  let mockOpenRouter: jest.Mocked<OpenRouterService>;
-  let mockQueue: jest.Mocked<QueueService>;
-
-  const mockJobData = {
-    jobId: 'sentiment_123',
-    query: 'AI',
-    product: 'Top' as const,
-    limit: 10,
-  };
+  let sentimentService: jest.Mocked<
+    Pick<SentimentService, 'processJob' | 'failJob'>
+  >;
 
   beforeEach(async () => {
-    mockScraper = {
-      fetchTweets: jest.fn(),
-    } as unknown as jest.Mocked<ScraperService>;
-
-    mockOpenRouter = {
-      analyzeTweets: jest.fn(),
-    } as unknown as jest.Mocked<OpenRouterService>;
-
-    mockQueue = {
-      storeResult: jest.fn(),
-    } as unknown as jest.Mocked<QueueService>;
+    sentimentService = {
+      processJob: jest.fn(),
+      failJob: jest.fn(),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SentimentProcessor,
-        { provide: ScraperService, useValue: mockScraper },
-        { provide: OpenRouterService, useValue: mockOpenRouter },
-        { provide: QueueService, useValue: mockQueue },
+        {
+          provide: SentimentService,
+          useValue: sentimentService,
+        },
       ],
     }).compile();
 
     processor = module.get<SentimentProcessor>(SentimentProcessor);
   });
 
-  it('should be defined', () => {
-    expect(processor).toBeDefined();
+  it('should delegate successful jobs to service', async () => {
+    const job = {
+      data: { jobId: 'sentiment_123', query: 'AI', product: 'Top', limit: 10 },
+      attemptsMade: 0,
+    } as Job<SentimentJobData>;
+
+    await processor.process(job);
+
+    expect(sentimentService.processJob).toHaveBeenCalledWith(job);
+    expect(sentimentService.failJob).not.toHaveBeenCalled();
   });
 
-  describe('process', () => {
-    it('should scrape, analyze, and store result', async () => {
-      const mockJob = { data: mockJobData } as Job;
-      const scrapedTweets = [
-        {
-          id: '1',
-          text: 'great AI',
-          username: 'user',
-          name: 'User',
-          timestamp: 1234567890,
-          likes: 10,
-          retweets: 5,
-          replies: 2,
-          views: 100,
-          permanentUrl: 'https://x.com/user/status/1',
-        },
-      ];
-      const sentimentResult = {
-        query: '',
-        total: 1,
-        summary: { positive: 100, negative: 0, neutral: 0 },
-        topInfluential: [],
-        tweets: [],
-        completedAt: '2026-04-15',
-      };
+  it('should mark jobs as failed when service throws', async () => {
+    const job = {
+      data: { jobId: 'sentiment_123', query: 'AI', product: 'Top', limit: 10 },
+      attemptsMade: 1,
+    } as Job<SentimentJobData>;
+    const error = new Error('OpenRouter unavailable');
+    sentimentService.processJob.mockRejectedValue(error);
 
-      mockScraper.fetchTweets.mockResolvedValue({
-        query: 'AI',
-        product: 'Top',
-        count: 1,
-        tweets: scrapedTweets,
-      });
-      mockOpenRouter.analyzeTweets.mockResolvedValue(sentimentResult);
-      mockQueue.storeResult.mockResolvedValue();
+    await expect(processor.process(job)).rejects.toThrow(error);
 
-      await processor.process(mockJob);
-
-      expect(mockScraper.fetchTweets).toHaveBeenCalledWith('AI', 'Top', 10);
-      expect(mockOpenRouter.analyzeTweets).toHaveBeenCalledWith(scrapedTweets);
-      expect(mockQueue.storeResult).toHaveBeenCalledWith(
-        'sentiment_123',
-        sentimentResult,
-      );
-    });
-
-    it('should set query on result', async () => {
-      const mockJob = { data: mockJobData } as Job;
-      mockScraper.fetchTweets.mockResolvedValue({
-        query: 'AI',
-        product: 'Top',
-        count: 1,
-        tweets: [],
-      });
-      mockOpenRouter.analyzeTweets.mockResolvedValue({
-        query: '',
-        total: 0,
-        summary: { positive: 0, negative: 0, neutral: 0 },
-        topInfluential: [],
-        tweets: [],
-        completedAt: '2026-04-15',
-      });
-
-      await processor.process(mockJob);
-
-      expect(mockQueue.storeResult).toHaveBeenCalledWith(
-        'sentiment_123',
-        expect.objectContaining({ query: 'AI' }),
-      );
-    });
+    expect(sentimentService.failJob).toHaveBeenCalledWith(job, error);
   });
 });

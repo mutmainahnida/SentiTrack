@@ -1,10 +1,8 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
-import { OpenRouterService } from './openrouter.service';
+import { GeminiService } from './gemini.service';
 
 @Module({
-  imports: [ConfigModule.forRoot({ isGlobal: true, envFilePath: ['../.env', '.env'] })],
-  providers: [OpenRouterService],
-  exports: [OpenRouterService],
+  providers: [GeminiService],
+  exports: [GeminiService],
 })
 export class LLMModule {}

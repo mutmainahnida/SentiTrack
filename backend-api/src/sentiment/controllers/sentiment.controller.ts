@@ -1,59 +1,90 @@
 import {
-  Controller,
-  Post,
+  BadRequestException,
   Body,
+  Controller,
+  Get,
   HttpException,
   HttpStatus,
+  Post,
+  Query,
 } from '@nestjs/common';
-import { QueueService } from '../../queue/queue.service';
-import { QUEUE_NAMES } from '../../queue/queue.constants';
+import { JobRequestFailedError } from '../../common/errors/job-request-failed.error';
+import { JobRequestTimeoutError } from '../../common/errors/job-request-timeout.error';
 import type { CreateSentimentDto } from '../dto/create-sentiment.dto';
-import type { SentimentJobData } from '../../queue/interfaces/sentiment-job.interface';
+import { SentimentService } from '../services/sentiment.service';
 
 @Controller('api/sentiment')
 export class SentimentController {
-  constructor(private readonly queueService: QueueService) {}
+  constructor(private readonly sentimentService: SentimentService) {}
+
+  @Get()
+  async analyzeFromQuery(
+    @Query('q') q?: string,
+    @Query('query') query?: string,
+    @Query('product') product?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const resolvedQuery = (q ?? query ?? '').trim();
+    if (!resolvedQuery) {
+      throw new BadRequestException('query is required');
+    }
+
+    return this.handleRequest({
+      query: resolvedQuery,
+      product: product === 'Latest' ? 'Latest' : 'Top',
+      limit: this.parseLimit(limit, 100),
+    });
+  }
 
   @Post()
   async analyze(@Body() dto: CreateSentimentDto) {
-    const jobId = `sentiment_${Date.now()}`;
-    const jobData: SentimentJobData = {
-      jobId,
-      query: dto.query,
+    if (!dto.query?.trim()) {
+      throw new BadRequestException('query is required');
+    }
+
+    return this.handleRequest({
+      query: dto.query.trim(),
       product: dto.product ?? 'Top',
       limit: dto.limit ?? 100,
-    };
+    });
+  }
 
+  private parseLimit(limit: string | undefined, fallback: number): number {
+    const parsed = Number.parseInt(limit ?? '', 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+  }
+
+  private async handleRequest(dto: CreateSentimentDto) {
     try {
-      const result = await this.queueService.enqueueAndWait(
-        QUEUE_NAMES.SENTIMENT,
-        jobData,
-        120000,
-      );
-
-      return {
-        jobId,
-        status: 'completed',
-        createdAt: new Date().toISOString(),
-        result,
-      };
+      return await this.sentimentService.requestSentiment(dto);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      if (message.includes('timeout')) {
+      if (err instanceof JobRequestTimeoutError) {
         throw new HttpException(
           {
             statusCode: HttpStatus.GATEWAY_TIMEOUT,
-            message: `Job processing timeout after 120000ms`,
-            jobId,
+            message: err.message,
+            jobId: err.jobId,
           },
           HttpStatus.GATEWAY_TIMEOUT,
         );
       }
+
+      if (err instanceof JobRequestFailedError) {
+        throw new HttpException(
+          {
+            statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+            message: err.message,
+            jobId: err.jobId,
+          },
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+      }
+
+      const message = err instanceof Error ? err.message : String(err);
       throw new HttpException(
         {
           statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
           message: message || 'Internal server error',
-          jobId,
         },
         HttpStatus.INTERNAL_SERVER_ERROR,
       );

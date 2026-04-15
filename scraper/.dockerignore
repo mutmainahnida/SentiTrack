@@ -1,6 +1,5 @@
 node_modules
 dist
 results
-cookies.json
 .git
 .env

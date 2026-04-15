@@ -1,5 +1,7 @@
+import type { SearchProduct } from '../../queue/interfaces/sentiment-job.interface';
+
 export interface CreateSentimentDto {
   query: string;
-  product?: 'Top' | 'Latest';
+  product?: SearchProduct;
   limit?: number;
 }

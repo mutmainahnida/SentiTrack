@@ -1,32 +1,40 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getQueueToken } from '@nestjs/bullmq';
-import { Queue, QueueEvents } from 'bullmq';
+import { Queue } from 'bullmq';
 import { QueueService } from './queue.service';
-import { QUEUE_NAMES } from './queue.constants';
+import { JOB_OPTIONS, QUEUE_NAMES } from './queue.constants';
+
+const redisMock = {
+  get: jest.fn(),
+  setex: jest.fn(),
+};
 
 jest.mock('ioredis', () => {
-  const mockRedis = {
-    get: jest.fn(),
-    setex: jest.fn(),
-  };
-  return jest.fn(() => mockRedis);
+  return jest.fn(() => redisMock);
 });
 
 describe('QueueService', () => {
   let service: QueueService;
-  let mockQueue: jest.Mocked<Queue>;
+  let searchQueue: jest.Mocked<Pick<Queue, 'add'>>;
+  let sentimentQueue: jest.Mocked<Pick<Queue, 'add'>>;
 
   beforeEach(async () => {
-    mockQueue = {
-      add: jest.fn(),
-    } as unknown as jest.Mocked<Queue>;
+    redisMock.get.mockReset();
+    redisMock.setex.mockReset();
+
+    searchQueue = { add: jest.fn() };
+    sentimentQueue = { add: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         QueueService,
         {
+          provide: getQueueToken(QUEUE_NAMES.SEARCH),
+          useValue: searchQueue,
+        },
+        {
           provide: getQueueToken(QUEUE_NAMES.SENTIMENT),
-          useValue: mockQueue,
+          useValue: sentimentQueue,
         },
       ],
     }).compile();
@@ -34,37 +42,63 @@ describe('QueueService', () => {
     service = module.get<QueueService>(QueueService);
   });
 
-  it('should be defined', () => {
-    expect(service).toBeDefined();
+  it('should enqueue search jobs with configured options', async () => {
+    searchQueue.add.mockResolvedValue({ id: 'job-1' } as Queue['add'] extends (
+      ...args: never[]
+    ) => Promise<infer TResult>
+      ? TResult
+      : never);
+
+    await service.enqueue(QUEUE_NAMES.SEARCH, {
+      jobId: 'search_1',
+      query: 'AI',
+      product: 'Top',
+      limit: 20,
+    });
+
+    expect(searchQueue.add).toHaveBeenCalledWith(
+      QUEUE_NAMES.SEARCH,
+      expect.objectContaining({ query: 'AI', limit: 20 }),
+      expect.objectContaining({
+        ...JOB_OPTIONS,
+        jobId: 'search_1',
+      }),
+    );
   });
 
-  describe('enqueue', () => {
-    it('should add job to sentiment queue', async () => {
-      const mockJob = { id: 'job-1', data: { query: 'AI' } };
-      mockQueue.add.mockResolvedValue(mockJob as any);
+  it('should enqueue sentiment jobs with configured options', async () => {
+    sentimentQueue.add.mockResolvedValue({
+      id: 'job-2',
+    } as Queue['add'] extends (...args: never[]) => Promise<infer TResult>
+      ? TResult
+      : never);
 
-      const result = await service.enqueue(QUEUE_NAMES.SENTIMENT, {
-        query: 'AI',
-        limit: 10,
-      });
-
-      expect(mockQueue.add).toHaveBeenCalledWith(
-        QUEUE_NAMES.SENTIMENT,
-        { query: 'AI', limit: 10 },
-        expect.objectContaining({
-          attempts: 3,
-          backoff: { type: 'exponential', delay: 2000 },
-          removeOnComplete: true,
-          removeOnFail: false,
-        }),
-      );
-      expect(result).toEqual(mockJob);
+    await service.enqueue(QUEUE_NAMES.SENTIMENT, {
+      jobId: 'sentiment_1',
+      query: 'AI',
+      product: 'Top',
+      limit: 20,
     });
 
-    it('should throw for unknown queue', async () => {
-      await expect(
-        service.enqueue('unknown-queue' as any, { data: 'test' }),
-      ).rejects.toThrow('Unknown queue: unknown-queue');
-    });
+    expect(sentimentQueue.add).toHaveBeenCalledWith(
+      QUEUE_NAMES.SENTIMENT,
+      expect.objectContaining({ query: 'AI', limit: 20 }),
+      expect.objectContaining({
+        ...JOB_OPTIONS,
+        jobId: 'sentiment_1',
+      }),
+    );
+  });
+
+  it('should store results using queue-specific keys', async () => {
+    redisMock.setex.mockResolvedValue('OK');
+
+    await service.storeResult(QUEUE_NAMES.SEARCH, 'search_1', { ok: true });
+
+    expect(redisMock.setex).toHaveBeenCalledWith(
+      'search:result:search_1',
+      86400,
+      JSON.stringify({ ok: true }),
+    );
   });
 });

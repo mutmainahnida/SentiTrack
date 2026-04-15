@@ -3,6 +3,26 @@ import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import { ScrapedTweet } from '../scraper/scraper.service';
 
+interface OpenRouterCompletionResponse {
+  choices?: Array<{
+    message?: {
+      content?: string;
+    };
+  }>;
+}
+
+interface RawTweetClassification {
+  index: number;
+  sentiment: string;
+  sentimentScore: number;
+}
+
+interface ClassificationCandidate {
+  index?: unknown;
+  sentiment?: unknown;
+  sentimentScore?: unknown;
+}
+
 export interface TweetSentiment {
   tweetId: string;
   text: string;
@@ -12,7 +32,7 @@ export interface TweetSentiment {
   retweets: number;
   replies: number;
   sentiment: 'positive' | 'negative' | 'neutral';
-  sentimentScore: number; 
+  sentimentScore: number;
   influenceScore: number;
 }
 
@@ -63,16 +83,20 @@ export class OpenRouterService {
     } catch (err) {
       if (retries <= 0) throw err;
       const msg = String(err);
+      // Check both error message string and Axios error status code
       const isOverloaded =
         msg.includes('503') ||
-        msg.includes('429') ||
         msg.includes('overloaded') ||
-        msg.includes('rate_limit');
+        msg.includes('rate_limit') ||
+        (typeof err === 'object' && err !== null && 'response' in err
+          ? (err as { response?: { status?: number } }).response?.status === 429
+          : msg.includes('429'));
       if (isOverloaded) {
+        const cappedDelay = Math.min(delayMs, 30000);
         this.logger.warn(
-          `OpenRouter overloaded, retrying in ${delayMs}ms... (${retries} left)`,
+          `OpenRouter overloaded, retrying in ${cappedDelay}ms... (${retries} left)`,
         );
-        await new Promise((resolve) => setTimeout(resolve, delayMs));
+        await new Promise((resolve) => setTimeout(resolve, cappedDelay));
         return this.retryWithBackoff(fn, retries - 1, delayMs * 2);
       }
       throw err;
@@ -95,8 +119,8 @@ ${tweetTexts}
 
 Respond ONLY with the JSON array, no extra text.`;
 
-    const { data } = await this.retryWithBackoff(() =>
-      axios.post(
+    const response = await this.retryWithBackoff(() =>
+      axios.post<OpenRouterCompletionResponse>(
         `${this.baseUrl}/chat/completions`,
         {
           model: this.model,
@@ -108,17 +132,13 @@ Respond ONLY with the JSON array, no extra text.`;
             Authorization: `Bearer ${this.apiKey}`,
             'Content-Type': 'application/json',
           },
-          timeout: 120000,
+          timeout: 60000,
         },
       ),
     );
 
-    const raw = data.choices?.[0]?.message?.content ?? '';
-    let classifications: {
-      index: number;
-      sentiment: string;
-      sentimentScore: number;
-    }[] = [];
+    const raw = response.data.choices?.[0]?.message?.content ?? '';
+    let classifications: RawTweetClassification[] = [];
     try {
       let jsonStr = raw.trim();
       if (raw.startsWith('```')) {
@@ -126,8 +146,8 @@ Respond ONLY with the JSON array, no extra text.`;
         const lastBacktick = raw.lastIndexOf('```');
         jsonStr = raw.slice(firstNewline + 1, lastBacktick);
       }
-      const parsed = JSON.parse(jsonStr);
-      classifications = Array.isArray(parsed) ? parsed : [];
+      const parsed: unknown = JSON.parse(jsonStr);
+      classifications = this.isClassificationArray(parsed) ? parsed : [];
     } catch {
       classifications = tweets.map((_, i) => ({
         index: i + 1,
@@ -193,5 +213,27 @@ Respond ONLY with the JSON array, no extra text.`;
       tweets: analyzed,
       completedAt: new Date().toISOString(),
     };
+  }
+
+  private isClassificationArray(
+    value: unknown,
+  ): value is RawTweetClassification[] {
+    return (
+      Array.isArray(value) &&
+      value.every((item) => this.isClassificationItem(item))
+    );
+  }
+
+  private isClassificationItem(item: unknown): item is RawTweetClassification {
+    if (typeof item !== 'object' || item === null) {
+      return false;
+    }
+
+    const candidate = item as ClassificationCandidate;
+    return (
+      typeof candidate.index === 'number' &&
+      typeof candidate.sentiment === 'string' &&
+      typeof candidate.sentimentScore === 'number'
+    );
   }
 }

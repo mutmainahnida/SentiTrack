@@ -1,21 +1,27 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { HttpException } from '@nestjs/common';
+import { JobRequestFailedError } from '../../common/errors/job-request-failed.error';
+import { JobRequestTimeoutError } from '../../common/errors/job-request-timeout.error';
 import { SentimentController } from './sentiment.controller';
-import { QueueService } from '../../queue/queue.service';
-import { QUEUE_NAMES } from '../../queue/queue.constants';
+import { SentimentService } from '../services/sentiment.service';
 
 describe('SentimentController', () => {
   let controller: SentimentController;
-  let mockQueueService: jest.Mocked<QueueService>;
+  let sentimentService: jest.Mocked<Pick<SentimentService, 'requestSentiment'>>;
 
   beforeEach(async () => {
-    mockQueueService = {
-      enqueueAndWait: jest.fn(),
-    } as unknown as jest.Mocked<QueueService>;
+    sentimentService = {
+      requestSentiment: jest.fn(),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [SentimentController],
-      providers: [{ provide: QueueService, useValue: mockQueueService }],
+      providers: [
+        {
+          provide: SentimentService,
+          useValue: sentimentService,
+        },
+      ],
     }).compile();
 
     controller = module.get<SentimentController>(SentimentController);
@@ -25,73 +31,78 @@ describe('SentimentController', () => {
     expect(controller).toBeDefined();
   });
 
-  describe('analyze', () => {
-    it('should return completed result with jobId', async () => {
-      const mockResult = {
+  it('should handle POST requests through service', async () => {
+    sentimentService.requestSentiment.mockResolvedValue({
+      jobId: 'sentiment_job',
+      status: 'completed',
+      createdAt: '2026-04-15T00:00:00.000Z',
+      result: {
         query: 'AI',
-        total: 3,
-        summary: { positive: 67, negative: 33, neutral: 0 },
+        total: 1,
+        summary: { positive: 100, negative: 0, neutral: 0 },
         topInfluential: [],
         tweets: [],
         completedAt: '2026-04-15T00:00:00.000Z',
-      };
-      mockQueueService.enqueueAndWait.mockResolvedValue(mockResult);
-
-      const response = await controller.analyze({ query: 'AI', limit: 3 });
-
-      expect(response).toMatchObject({
-        status: 'completed',
-        result: mockResult,
-      });
-      expect((response as any).jobId).toMatch(/^sentiment_\d+$/);
-      expect(mockQueueService.enqueueAndWait).toHaveBeenCalledWith(
-        QUEUE_NAMES.SENTIMENT,
-        expect.objectContaining({ query: 'AI', limit: 3, product: 'Top' }),
-        120000,
-      );
+      },
     });
 
-    it('should default product to Top and limit to 100', async () => {
-      mockQueueService.enqueueAndWait.mockResolvedValue({} as any);
+    const response = await controller.analyze({ query: 'AI', limit: 10 });
 
-      await controller.analyze({ query: 'AI' });
+    expect(sentimentService.requestSentiment).toHaveBeenCalledWith({
+      query: 'AI',
+      product: 'Top',
+      limit: 10,
+    });
+    expect(response.status).toBe('completed');
+  });
 
-      expect(mockQueueService.enqueueAndWait).toHaveBeenCalledWith(
-        QUEUE_NAMES.SENTIMENT,
-        expect.objectContaining({ product: 'Top', limit: 100 }),
-        120000,
-      );
+  it('should handle GET requests through service', async () => {
+    sentimentService.requestSentiment.mockResolvedValue({
+      jobId: 'sentiment_job',
+      status: 'completed',
+      createdAt: '2026-04-15T00:00:00.000Z',
+      result: {
+        query: 'pak purbaya',
+        total: 2,
+        summary: { positive: 50, negative: 25, neutral: 25 },
+        topInfluential: [],
+        tweets: [],
+        completedAt: '2026-04-15T00:00:00.000Z',
+      },
     });
 
-    it('should throw 504 on timeout', async () => {
-      mockQueueService.enqueueAndWait.mockRejectedValue(
-        new Error('Job job_1 processing timeout after 120000ms'),
-      );
+    await controller.analyzeFromQuery('pak purbaya', undefined, 'Latest', '20');
 
-      await expect(controller.analyze({ query: 'AI' })).rejects.toThrow(
-        HttpException,
-      );
-      try {
-        await controller.analyze({ query: 'AI' });
-      } catch (err) {
-        expect((err as HttpException).getStatus()).toBe(504);
-        expect((err as any).response.jobId).toMatch(/^sentiment_\d+$/);
-      }
+    expect(sentimentService.requestSentiment).toHaveBeenCalledWith({
+      query: 'pak purbaya',
+      product: 'Latest',
+      limit: 20,
     });
+  });
 
-    it('should throw 500 on generic error', async () => {
-      mockQueueService.enqueueAndWait.mockRejectedValue(
-        new Error('Redis unavailable'),
-      );
+  it('should throw 504 on timeout errors', async () => {
+    sentimentService.requestSentiment.mockRejectedValue(
+      new JobRequestTimeoutError('job-1'),
+    );
 
-      await expect(controller.analyze({ query: 'AI' })).rejects.toThrow(
-        HttpException,
-      );
-      try {
-        await controller.analyze({ query: 'AI' });
-      } catch (err) {
-        expect((err as HttpException).getStatus()).toBe(500);
-      }
-    });
+    await expect(controller.analyze({ query: 'AI' })).rejects.toThrow(
+      HttpException,
+    );
+  });
+
+  it('should throw 500 on job failures', async () => {
+    sentimentService.requestSentiment.mockRejectedValue(
+      new JobRequestFailedError('job-2', 'Redis unavailable'),
+    );
+
+    await expect(controller.analyze({ query: 'AI' })).rejects.toThrow(
+      HttpException,
+    );
+  });
+
+  it('should reject blank queries', async () => {
+    await expect(controller.analyze({ query: '   ' })).rejects.toThrow(
+      'query is required',
+    );
   });
 });

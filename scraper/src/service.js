@@ -396,10 +396,6 @@ app.get('/', (req, res) => {
     ? '<span class="ok">Logged In</span> <small>(' + status.cookieCount + ' cookies)</small>'
     : '<span class="err">Not Logged In</span>';
 
-  const loginSection = status.loggedIn ? '' : `
-    <a href="/login" class="btn-login">Login to X.com</a>
-  `;
-
   res.send(`<!DOCTYPE html>
 <html>
 <head>
@@ -475,9 +471,15 @@ app.get('/', (req, res) => {
 </html>`);
 });
 
-app.get('/api/session', (req, res) => {
-  const status = getSessionStatus();
-  if (!status.loggedIn) return res.json({ loggedIn: false });
+app.get('/api/session', async (req, res) => {
+  const status = await getSessionStatus();
+  if (!status.loggedIn) {
+    return res.json({
+      loggedIn: false,
+      loginUrl: '/login',
+      message: 'Not logged in. Visit /login to authenticate Twitter session.',
+    });
+  }
   res.json({
     loggedIn: true,
     savedAt: status.savedAt,
