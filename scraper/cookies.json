@@ -1,0 +1,35 @@
+{
+  "cookies": [
+    {
+      "name": "auth_token",
+      "value": "abc123",
+      "domain": ".x.com",
+      "path": "/",
+      "httpOnly": false,
+      "secure": true,
+      "session": false
+    },
+    {
+      "name": "ct0",
+      "value": "xyz789",
+      "domain": ".x.com",
+      "path": "/",
+      "httpOnly": false,
+      "secure": true,
+      "session": false
+    },
+    {
+      "name": "guest_id",
+      "value": "123",
+      "domain": ".x.com",
+      "path": "/",
+      "httpOnly": false,
+      "secure": true,
+      "session": false
+    }
+  ],
+  "cookieString": "auth_token=abc123; ct0=xyz789; guest_id=123",
+  "csrfToken": "xyz789",
+  "savedAt": "2026-04-14T14:06:37.082Z",
+  "expiresAt": null
+}
