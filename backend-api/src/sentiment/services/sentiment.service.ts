@@ -34,12 +34,19 @@ export class SentimentService {
       limit: dto.limit ?? 100,
     });
 
-    const result = await this.pipelineOrchestrator.startPipeline({
-      sentimentId: id,
-      query: dto.query,
-      product: dto.product ?? 'Top',
-      limit: dto.limit ?? 100,
-    });
+    let result: SentimentResult;
+    try {
+      result = await this.pipelineOrchestrator.startPipeline({
+        sentimentId: id,
+        query: dto.query,
+        product: dto.product ?? 'Top',
+        limit: dto.limit ?? 100,
+      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      await this.sentimentRepository.markFailed(id, message, 1);
+      throw err;
+    }
 
     return {
       id,
