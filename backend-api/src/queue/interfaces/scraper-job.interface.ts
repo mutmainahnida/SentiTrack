@@ -1,6 +1,8 @@
+import type { SearchProduct } from './sentiment-job.interface';
+
 export interface ScraperJobData {
   sentimentId: string;
   query: string;
-  product: 'Top' | 'Latest';
+  product: SearchProduct;
   limit: number;
 }

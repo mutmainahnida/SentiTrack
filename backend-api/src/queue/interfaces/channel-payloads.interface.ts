@@ -1,24 +1,14 @@
+import type { ScrapedTweet } from '../../scraper/scraper.service';
+import type { SentimentResult } from './sentiment-job.interface';
+
 export interface ScrapeResultPayload {
   sentimentId: string;
-  tweets: Array<{
-    id: string;
-    text: string;
-    username: string;
-    views: number;
-    likes: number;
-    retweets: number;
-    replies: number;
-  }>;
+  tweets: ScrapedTweet[];
 }
 
 export interface ClassifyResultPayload {
   sentimentId: string;
-  result: {
-    summary: { positive: number; negative: number; neutral: number };
-    topInfluential: Array<Record<string, unknown>>;
-    tweets: Array<Record<string, unknown>>;
-    completedAt: string;
-  };
+  result: SentimentResult;
 }
 
 export interface PipelineErrorPayload {
