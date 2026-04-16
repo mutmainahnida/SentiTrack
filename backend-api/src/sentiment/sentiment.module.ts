@@ -1,5 +1,5 @@
+import { Module, forwardRef } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
-import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaModule } from '../prisma/prisma.module';
 import { QueueModule } from '../queue/queue.module';
@@ -20,7 +20,7 @@ import { SentimentService } from './services/sentiment.service';
       }),
     }),
     PrismaModule,
-    QueueModule,
+    forwardRef(() => QueueModule),
     ScraperModule,
     LLMModule,
   ],
