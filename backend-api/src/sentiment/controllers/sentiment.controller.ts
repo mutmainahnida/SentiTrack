@@ -41,7 +41,6 @@ export class SentimentController {
     @Query('limit') limit?: string,
     @Query('jobId') jobId?: string,
   ) {
-    // Single job by jobId — GET /api/sentiment?jobId=sentiment_xxx
     if (jobId) {
       const record = await this.sentimentService.getByJobId(jobId);
       if (!record) {

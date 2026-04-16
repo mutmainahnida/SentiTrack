@@ -121,7 +121,7 @@ class HealthHandler(BaseHTTPRequestHandler):
             self.end_headers()
 
     def log_message(self, format, *args):
-        pass  # Suppress logs
+        pass  
 
 
 def run_health():
@@ -131,7 +131,7 @@ def run_health():
 
 async def main():
     worker = await start_worker()
-    await asyncio.Event().wait()  # Keep running
+    await asyncio.Event().wait()  
 
 
 if __name__ == "__main__":

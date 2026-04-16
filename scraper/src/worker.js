@@ -14,15 +14,12 @@ const worker = new Worker(
 
     try {
       const tweets = await scraper.searchTweets(query, limit, product);
-
-      // Store intermediate state in Redis
       await redis.setex(
         `sentiment:${sentimentId}`,
         3600,
         JSON.stringify({ status: 'processing', tweets }),
       );
 
-      // Publish result to channel
       await pubsub.publish(
         `ch:scrape:${sentimentId}`,
         JSON.stringify({ sentimentId, tweets }),

@@ -19,7 +19,6 @@ class IndoBERTClassifier:
         self._tokenizer = tok
         self._model = mod
 
-        # Build label mapping with STRING keys so lookup works consistently
         config = mod.config
         if hasattr(config, "id2label") and config.id2label:
             self._id2label = {str(k): str(v) for k, v in config.id2label.items()}
@@ -39,13 +38,11 @@ class IndoBERTClassifier:
         2. Heuristic fallback: match raw_label against known sentiment keywords
         """
         label_str = str(label_id)
-        # Case 1: id2label contains a known sentiment string
         if label_str in self._id2label:
             candidate = self._id2label[label_str].lower()
             if candidate in ("positive", "negative", "neutral"):
                 return candidate, 1.0
 
-        # Case 2: heuristic fallback
         raw = raw_label.lower()
         if raw in ("positive", "negative", "neutral"):
             return raw, 1.0
@@ -67,7 +64,6 @@ class IndoBERTClassifier:
         if not texts:
             return []
 
-        # Tokenize in batches
         all_inputs = self._tokenizer(
             texts,
             padding=True,
@@ -103,7 +99,6 @@ class IndoBERTClassifier:
         return results
 
 
-# Module-level singleton
 _classifier: IndoBERTClassifier | None = None
 
 
