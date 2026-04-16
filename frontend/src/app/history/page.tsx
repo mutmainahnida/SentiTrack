@@ -145,7 +145,7 @@ export default function HistoryPage() {
                     />
                     <input
                       type="text"
-                      placeholder="Filter riwayat..."
+                      placeholder="Cari riwayat..."
                       value={filter}
                       onChange={(e) => setFilter(e.target.value)}
                       className="w-full h-9 pl-9 pr-4 rounded-lg bg-app-surface-low dark:bg-app-surface-low border border-app-border-strong dark:border-app-border-strong text-app-main dark:text-app-main placeholder:text-app-muted dark:placeholder:text-app-muted focus:outline-none focus:ring-2 focus:ring-app-primary/20 dark:focus:ring-app-primary/20 focus:border-app-primary dark:focus:border-app-primary"

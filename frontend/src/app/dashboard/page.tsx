@@ -14,18 +14,6 @@ import {
   type HistoryItem,
 } from "@/hooks/useSentimentHistory";
 
-function getRecentTopics(items: HistoryItem[], topN = 3): string[] {
-  if (items.length === 0) return ["—", "—", "—"];
-  const counts: Record<string, number> = {};
-  for (const item of items) {
-    counts[item.query] = (counts[item.query] || 0) + 1;
-  }
-  return Object.entries(counts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, topN)
-    .map(([q]) => q);
-}
-
 function SentimentBarChart({ items }: { items: HistoryItem[] }) {
   const sentimentBars = [
     { label: "Positive", key: "positive" as const, color: "#22c55e", bg: "bg-emerald-500" },
@@ -196,7 +184,18 @@ function DashboardContent() {
 
   const avgScore = computeAvgSentiment(items);
   const recentItems = items.slice(0, 5);
-  const trendingTopics = getRecentTopics(items, 3);
+  const lastAnalysis = items[0] ?? null;
+
+  function timeAgo(iso: string): string {
+    const diff = Date.now() - new Date(iso).getTime();
+    const min = Math.floor(diff / 60000);
+    if (min < 1) return "Baru saja";
+    if (min < 60) return `${min}m lalu`;
+    const hr = Math.floor(min / 60);
+    if (hr < 24) return `${hr}h lalu`;
+    const day = Math.floor(hr / 24);
+    return `${day}d lalu`;
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-app-bg dark:bg-app-bg">
@@ -243,21 +242,6 @@ function DashboardContent() {
                     </button>
                   </div>
                 </div>
-                <p className="text-xs text-app-muted dark:text-app-muted mt-4">
-                  {trendingTopics[0] !== "—" ? (
-                    <>
-                      Tren:{" "}
-                      {trendingTopics.map((topic, i) => (
-                        <span key={`hero-${i}`} className="font-medium">
-                          {topic}
-                          {i < trendingTopics.length - 1 && ", "}
-                        </span>
-                      ))}
-                    </>
-                  ) : (
-                    <span>Mulai analisis pertama Anda</span>
-                  )}
-                </p>
               </section>
 
               {/* Stats Grid */}
@@ -301,37 +285,46 @@ function DashboardContent() {
                   <p className="text-sm text-app-muted dark:text-app-muted font-medium">Avg. Overall Score</p>
                 </div>
 
-                {/* Trending Topics */}
+                {/* Last Analysis */}
                 <div className="bg-app-bg dark:bg-app-surface-low rounded-xl p-6 border border-app-border-strong dark:border-app-border-strong group hover:border-app-primary/50 dark:hover:border-app-primary/50 transition-colors">
                   <div className="flex items-start justify-between mb-4">
                     <div className="w-12 h-12 rounded-xl bg-app-surface-low dark:bg-app-surface-low flex items-center justify-center">
-                      <MaterialIcon name="hub" className="text-xl text-app-primary dark:text-app-primary" />
+                      <MaterialIcon name="history" className="text-xl text-app-primary dark:text-app-primary" />
                     </div>
-                    <span className="flex items-center gap-1 px-2 py-1 rounded-full bg-green-50 dark:bg-green-500/10 text-green-600 dark:text-green-400 text-xs font-bold">
-                      <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                      {statsLoading ? "" : "Live"}
-                    </span>
                   </div>
-                  <p className="text-xl font-black text-app-main dark:text-app-main tracking-tight mb-4">
-                    Topik Tren
-                  </p>
-                  <div className="space-y-2">
-                    {statsLoading
-                      ? [1, 2, 3].map((i) => (
-                          <div key={i} className="h-4 w-32 bg-app-surface-low dark:bg-app-surface-low rounded animate-pulse" />
-                        ))
-                      : trendingTopics.map((topic, i) => (
-                          <div key={i} className="flex items-center gap-2">
-                            <span className="w-5 h-5 rounded-full bg-app-primary/10 dark:bg-app-primary/10 text-app-primary dark:text-app-primary text-xs font-bold flex items-center justify-center flex-shrink-0">
-                              {i + 1}
-                            </span>
-                            <span className="text-sm font-medium text-app-main dark:text-app-main truncate">
-                              {topic}
-                            </span>
-                          </div>
-                        ))}
-                  </div>
+                  {statsLoading ? (
+                    <>
+                      <div className="h-6 w-32 bg-app-surface-low dark:bg-app-surface-low rounded animate-pulse mb-1" />
+                      <div className="h-4 w-24 bg-app-surface-low dark:bg-app-surface-low rounded animate-pulse mt-1" />
+                    </>
+                  ) : lastAnalysis ? (
+                    <>
+                      <p className="text-lg font-black text-app-main dark:text-app-main tracking-tight mb-1 truncate">
+                        {lastAnalysis.query}
+                      </p>
+                      <p className="text-sm text-app-muted dark:text-app-muted mb-3">
+                        {timeAgo(lastAnalysis.createdAt)}
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/50">
+                          {computeOverallScore(lastAnalysis.positivePct, lastAnalysis.negativePct, lastAnalysis.neutralPct)}
+                        </span>
+                        <div className="flex gap-1">
+                          <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                          <div className="w-2 h-2 rounded-full bg-yellow-400" />
+                          <div className="w-2 h-2 rounded-full bg-red-400" />
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-3xl font-black text-app-main dark:text-app-main tracking-tight mb-1">—</p>
+                      <p className="text-sm text-app-muted dark:text-app-muted font-medium">Belum ada analisis</p>
+                    </>
+                  )}
+                  <p className="text-sm text-app-muted dark:text-app-muted font-medium mt-2">Analisis Terakhir</p>
                 </div>
+
               </section>
 
               {/* Bento Section */}

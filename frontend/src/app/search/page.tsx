@@ -93,7 +93,7 @@ function TweetCard({ tweet, sentiment }: { tweet: ScrapedTweet; sentiment: "posi
 function TopKeywordsCard({ keywords, onKeywordClick }: { keywords: string[]; onKeywordClick: (kw: string) => void }) {
   return (
     <div className="bg-app-bg dark:bg-app-surface-low rounded-xl p-6 border border-app-border/20 dark:border-app-border/20">
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex items-center justify-start mb-5">
         <h3 className="text-sm font-bold text-app-main dark:text-app-main">Trending Keywords</h3>
         <MaterialIcon name="trending_up" className="text-app-primary" />
       </div>
@@ -114,15 +114,7 @@ function TopKeywordsCard({ keywords, onKeywordClick }: { keywords: string[]; onK
 }
 
 
-function CTACard() {
-  return (
-    <div className="bg-app-primary dark:bg-app-primary rounded-xl p-6 text-white">
-      <h3 className="text-base font-bold mb-2">Need Deeper Insights?</h3>
-      <p className="text-sm opacity-80 mb-5">Unlock competitor comparisons, historical trends, and exportable reports.</p>
-      <button className="w-full py-3 bg-white text-app-main dark:text-app-primary font-bold rounded-xl hover:bg-white/90 transition-colors">Compare Competitors</button>
-    </div>
-  );
-}
+
 
 function MetricsCard({ label, value, pct, color, count }: { label: string; value: number; pct: string; color: string; count: number }) {
   return (
@@ -151,73 +143,76 @@ function AnalysisResults({ result, onAnalyze }: { result: { score: number; posit
 
   return (
     <>
-      {/* Score Header */}
-      <div className="bg-app-bg dark:bg-app-surface-low rounded-xl p-8 text-center border border-slate-200 dark:border-app-border-strong mb-8">
-        <p className="text-xs font-bold uppercase tracking-widest text-app-muted dark:text-app-muted mb-4">Overall Score for "{result.query}"</p>
-        <p className="text-6xl font-black text-app-main dark:text-app-main leading-none">
-          {result.score}<span className="text-2xl font-normal text-app-muted">/100</span>
-        </p>
-        <div className="mt-4 flex items-center justify-center gap-2">
-          <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm font-semibold ${scoreColorClass}`}>
-            <MaterialIcon name={scoreIcon} />
-            {scoreLabel}
-          </span>
-        </div>
-      </div>
-
-      {/* Sentiment Cards */}
+      {/* Score + Sentiment Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-12">
+        {/* Overall Score */}
+        <div className="bg-app-bg dark:bg-app-surface-low rounded-xl p-6 text-center border border-slate-200 dark:border-app-border-strong">
+          <p className="text-xs font-bold uppercase tracking-widest text-app-muted dark:text-app-muted mb-4">Overall Score</p>
+          <p className="text-5xl font-black text-app-main dark:text-app-main leading-none">
+            {result.score}<span className="text-xl font-normal text-app-muted">/100</span>
+          </p>
+          <div className="mt-4 flex items-center justify-center gap-2">
+            <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ${scoreColorClass}`}>
+              <MaterialIcon name={scoreIcon} />
+              {scoreLabel}
+            </span>
+          </div>
+        </div>
+
+        {/* Sentiment Cards */}
         <MetricsCard label="Positive" value={result.positive} pct={`${result.positive}%`} color="#22c55e" count={Math.round(result.total * result.positive / 100)} />
         <MetricsCard label="Neutral" value={result.neutral} pct={`${result.neutral}%`} color="#eab308" count={Math.round(result.total * result.neutral / 100)} />
         <MetricsCard label="Negative" value={result.negative} pct={`${result.negative}%`} color="#f87171" count={Math.round(result.total * result.negative / 100)} />
-        <div className="bg-app-primary dark:bg-app-primary rounded-xl p-6 text-white flex flex-col justify-between">
-          <div>
-            <p className="text-sm font-bold opacity-80 mb-2">Total Data</p>
-            <p className="text-4xl font-black">{result.total.toLocaleString()}</p>
-            <p className="text-sm opacity-80 mt-1">tweets analyzed</p>
-          </div>
-          <MaterialIcon name="analytics" className="text-4xl opacity-50" />
-        </div>
       </div>
 
       {/* Main Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
-        <div className="lg:col-span-8 space-y-6">
-          {/* Top Influential */}
+      <div className="space-y-6">
+        {/* Top Keywords + Total Data */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="lg:col-span-8">
+            <TopKeywordsCard keywords={result.topKeywords} onKeywordClick={onAnalyze} />
+          </div>
+          <div className="lg:col-span-4">
+            <div className="bg-app-primary dark:bg-app-primary rounded-xl p-6 text-white flex flex-col justify-between h-full">
+              <div>
+                <p className="text-sm font-bold opacity-80 mb-2">Total Data</p>
+                <p className="text-4xl font-black">{result.total.toLocaleString()}</p>
+                <p className="text-sm opacity-80 mt-1">tweets analyzed</p>
+              </div>
+              <MaterialIcon name="analytics" className="text-4xl opacity-50" />
+            </div>
+          </div>
+        </div>
+
+        {/* Top Influential */}
+        <div>
+          <h2 className="text-xl font-bold text-app-main dark:text-app-main mb-1">
+            Top Influential Tweets
+          </h2>
+          <p className="text-sm text-app-muted dark:text-app-muted mb-4">
+            Highest reach and engagement tweets for "{result.query}"
+          </p>
+          <div className="space-y-4">
+            {result.topInfluential.map((tweet) => (
+              <TweetCard key={tweet.tweetId} tweet={tweet} sentiment={tweet.sentiment} />
+            ))}
+          </div>
+        </div>
+
+        {/* All Tweets */}
+        {result.tweets.length > result.topInfluential.length && (
           <div>
             <h2 className="text-xl font-bold text-app-main dark:text-app-main mb-1">
-              Top Influential Tweets
+              All Analyzed Tweets
+              <span className="ml-2 text-sm font-normal text-app-muted">({result.tweets.length} tweets)</span>
             </h2>
-            <p className="text-sm text-app-muted dark:text-app-muted mb-4">
-              Highest reach and engagement tweets for "{result.query}"
-            </p>
-            <div className="space-y-4">
-              {result.topInfluential.map((tweet) => (
+            <div className="space-y-4 mt-4">
+              {result.tweets.slice(result.topInfluential.length).map((tweet) => (
                 <TweetCard key={tweet.tweetId} tweet={tweet} sentiment={tweet.sentiment} />
               ))}
             </div>
           </div>
-
-          {/* All Tweets */}
-          {result.tweets.length > result.topInfluential.length && (
-            <div className="mt-8">
-              <h2 className="text-xl font-bold text-app-main dark:text-app-main mb-1">
-                All Analyzed Tweets
-                <span className="ml-2 text-sm font-normal text-app-muted">({result.tweets.length} tweets)</span>
-              </h2>
-              <div className="space-y-4 mt-4">
-                {result.tweets.slice(result.topInfluential.length).map((tweet) => (
-                  <TweetCard key={tweet.tweetId} tweet={tweet} sentiment={tweet.sentiment} />
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="lg:col-span-4 space-y-8">
-          <TopKeywordsCard keywords={result.topKeywords} onKeywordClick={onAnalyze} />
-          <CTACard />
-        </div>
+        )}
       </div>
     </>
   );
@@ -270,7 +265,7 @@ function SearchContent() {
 
               {/* Search Header Bar */}
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10 mt-6">
-                <div className="relative flex-1 max-w-2xl">
+                <div className="relative flex-1 max-w-4xl">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-app-muted">
                     <MaterialIcon name="search" />
                   </span>
@@ -293,10 +288,7 @@ function SearchContent() {
                     <MaterialIcon name="trending_up" />
                     <span>{status === "loading" ? "Analyzing..." : "Analyze"}</span>
                   </button>
-                  <button className="flex items-center gap-2 px-5 py-3 bg-app-surface-lowest dark:bg-app-surface-lowest text-app-primary dark:text-app-primary font-semibold rounded-xl hover:opacity-90 transition-opacity">
-                    <MaterialIcon name="bookmark" />
-                    <span>Save Search</span>
-                  </button>
+
                   <button className="flex items-center gap-2 px-5 py-3 bg-app-surface-lowest dark:bg-app-surface-lowest text-app-primary dark:text-app-primary font-semibold rounded-xl hover:opacity-90 transition-opacity">
                     <MaterialIcon name="download" />
                     <span>Export to CSV</span>
