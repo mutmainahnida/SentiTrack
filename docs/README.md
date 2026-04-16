@@ -9,7 +9,7 @@ Complete API reference for all backend endpoints.
 | [Auth](api-auth.md) | `/api/auth` | None | User registration, login, token refresh |
 | [Users](api-users.md) | `/api/users` | JWT | User management (CRUD), role-based access |
 | [Search](api-search.md) | `/api/search` | None | Tweet search (raw data) |
-| [Sentiment](api-sentiment.md) | `/api/sentiment` | JWT | Sentiment analysis with Gemini AI |
+| [Sentiment](api-sentiment.md) | `/api/sentiment` | JWT | Sentiment analysis via BullMQ workers (IndoBERT classifier + tweet scraper) |
 | [PRD Efficiency](prd-codebase-efficiency.md) | `docs/prd-codebase-efficiency.md` | Internal | Efficiency roadmap for backend architecture |
 
 ## Base Response Format
@@ -76,7 +76,8 @@ Tokens are obtained via `/api/auth/login` or `/api/auth/refresh`.
 | backend-api | 5000 | NestJS application |
 | postgres | 5432 | PostgreSQL database |
 | redis | 6379 | BullMQ job queue |
-| scraper | 5001 | Puppeteer tweet scraper |
+| scraper | - | BullMQ worker (internal, no HTTP port) |
+| indobert-classifier | - | BullMQ worker (internal, no HTTP port) |
 | frontend | 3000 | Next.js web app |
 
 ## Rate Limiting
@@ -85,4 +86,4 @@ API endpoints are rate-limited to **100 requests per minute** per IP using `@nes
 
 ---
 
-Generated: 2026-04-15
+Generated: 2026-04-16
