@@ -33,7 +33,8 @@ export class QueueService {
   }
 
   private getQueue(queueName: QueueName): Queue {
-    const queues: Record<QueueName, Queue> = {
+    // Note: scrape and classify queues are managed by QueuePublisher, not QueueService
+    const queues: Record<string, Queue> = {
       [QUEUE_NAMES.SEARCH]: this.searchQueue,
       [QUEUE_NAMES.SENTIMENT]: this.sentimentQueue,
     };
