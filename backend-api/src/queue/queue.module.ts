@@ -14,6 +14,7 @@ import { SentimentModule } from '../sentiment/sentiment.module';
       connection: {
         host: process.env.REDIS_HOST ?? 'localhost',
         port: parseInt(process.env.REDIS_PORT ?? '6379', 10),
+        family: 4,
       },
     }),
     BullModule.registerQueue({ name: QUEUE_NAMES.SEARCH }),

@@ -24,7 +24,7 @@ export class PipelineOrchestrator implements OnModuleInit, OnModuleDestroy {
       timeout: ReturnType<typeof setTimeout>;
     }
   >();
-  private readonly REQUEST_TIMEOUT_MS = 300_000; // 5 minutes
+  private readonly REQUEST_TIMEOUT_MS = 300_000; 
 
   constructor(
     private readonly config: ConfigService,
@@ -34,19 +34,18 @@ export class PipelineOrchestrator implements OnModuleInit, OnModuleDestroy {
     const host = this.config.get<string>('REDIS_HOST') ?? 'localhost';
     const port = this.config.get<number>('REDIS_PORT') ?? 6379;
 
-    this.redis = new Redis({ host, port, lazyConnect: true });
-    this.subscriber = new Redis({ host, port, lazyConnect: true });
+    this.redis = new Redis({ host, port, family: 4, lazyConnect: true });
+    this.subscriber = new Redis({ host, port, family: 4, lazyConnect: true });
   }
 
   async onModuleInit(): Promise<void> {
     await this.redis.connect();
     await this.subscriber.connect();
 
-    // Subscribe to scrape result channel pattern
+
     await this.subscriber.psubscribe('ch:scrape:*');
     this.subscriber.on('pmessage', this.handleScrapeMessage.bind(this));
 
-    // Subscribe to classify result channel pattern
     await this.subscriber.psubscribe('ch:classify:*');
     this.subscriber.on('pmessage', this.handleClassifyMessage.bind(this));
 
@@ -71,14 +70,11 @@ export class PipelineOrchestrator implements OnModuleInit, OnModuleDestroy {
   }): Promise<SentimentResult> {
     const { sentimentId, query, product, limit } = params;
 
-    // Set initial pipeline state in Redis
     const initialState: PipelineState = { status: 'pending', query };
     await this.redis.setex(`sentiment:${sentimentId}`, 3600, JSON.stringify(initialState));
 
-    // Enqueue scrape job
     await this.queuePublisher.enqueueScrape({ sentimentId, query, product, limit });
 
-    // Wait for scrape result via pub/sub
     const scrapeResult = await this.waitForChannel(`ch:scrape:${sentimentId}`);
 
     if ((scrapeResult as PipelineErrorPayload).error) {
@@ -93,10 +89,8 @@ export class PipelineOrchestrator implements OnModuleInit, OnModuleDestroy {
 
     const scrape = scrapeResult as ScrapeResultPayload;
 
-    // Enqueue classify job
     await this.queuePublisher.enqueueClassify({ sentimentId, query: params.query, tweets: scrape.tweets });
 
-    // Wait for classify result via pub/sub
     const classifyResult = await this.waitForChannel(`ch:classify:${sentimentId}`);
 
     if ((classifyResult as PipelineErrorPayload).error) {
@@ -111,10 +105,8 @@ export class PipelineOrchestrator implements OnModuleInit, OnModuleDestroy {
 
     const classify = classifyResult as ClassifyResultPayload;
 
-    // Persist final result to Postgres
     await this.sentimentRepo.markCompleted(sentimentId, classify.result, 1);
 
-    // Cleanup Redis state
     await this.redis.del(`sentiment:${sentimentId}`);
 
     return classify.result;

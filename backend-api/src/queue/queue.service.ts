@@ -29,11 +29,10 @@ export class QueueService {
   private initRedis() {
     const host = process.env.REDIS_HOST ?? 'localhost';
     const port = parseInt(process.env.REDIS_PORT ?? '6379', 10);
-    this.redis = new Redis({ host, port });
+    this.redis = new Redis({ host, port, family: 4 });
   }
 
   private getQueue(queueName: QueueName): Queue {
-    // Note: scrape and classify queues are managed by QueuePublisher, not QueueService
     const queues: Record<string, Queue> = {
       [QUEUE_NAMES.SEARCH]: this.searchQueue,
       [QUEUE_NAMES.SENTIMENT]: this.sentimentQueue,
