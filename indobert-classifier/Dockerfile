@@ -12,7 +12,7 @@ RUN pip install --upgrade pip && \
     transformers==4.51.3 \
     "torch==2.5.1" --extra-index-url https://download.pytorch.org/whl/cpu && \
     pip install --no-cache-dir pydantic==2.10.6 \
-    "bullmq>=5.0.0" \
+    "bullmq==2.20.3" \
     "redis>=5.0.0" && \
     pip cache purge
 

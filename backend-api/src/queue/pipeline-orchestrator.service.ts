@@ -94,7 +94,7 @@ export class PipelineOrchestrator implements OnModuleInit, OnModuleDestroy {
     const scrape = scrapeResult as ScrapeResultPayload;
 
     // Enqueue classify job
-    await this.queuePublisher.enqueueClassify({ sentimentId, tweets: scrape.tweets });
+    await this.queuePublisher.enqueueClassify({ sentimentId, query: params.query, tweets: scrape.tweets });
 
     // Wait for classify result via pub/sub
     const classifyResult = await this.waitForChannel(`ch:classify:${sentimentId}`);

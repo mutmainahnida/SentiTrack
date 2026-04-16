@@ -34,6 +34,8 @@ export class SentimentService {
       limit: dto.limit ?? 100,
     });
 
+    await this.sentimentRepository.markProcessing(id, 1);
+
     let result: SentimentResult;
     try {
       result = await this.pipelineOrchestrator.startPipeline({

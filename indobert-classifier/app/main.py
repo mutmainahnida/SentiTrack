@@ -28,6 +28,7 @@ classifier = None
 async def process_job(job):
     global classifier
     sentiment_id = job.data["sentimentId"]
+    query = job.data.get("query", "")
     tweets = job.data["tweets"]
 
     redis_conn = aioredis.from_url(REDIS_URL)
@@ -60,7 +61,7 @@ async def process_job(job):
         top_influential = sorted(tweets_with_sentiment, key=lambda x: x["influenceScore"], reverse=True)[:10]
 
         result = {
-            "query": "",
+            "query": query,
             "total": total,
             "summary": {"positive": positive, "negative": negative, "neutral": neutral},
             "topInfluential": top_influential,

@@ -52,6 +52,7 @@ services:
       - MAX_LENGTH=${MAX_LENGTH:-128}
       - REDIS_HOST=sentitrack-redis
       - REDIS_PORT=6379
+      - REDIS_URL=redis://sentitrack-redis:6379
 
   backend-api:
     build:

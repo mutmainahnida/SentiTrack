@@ -3,5 +3,5 @@ uvicorn[standard]==0.34.0
 transformers==4.51.3
 torch==2.5.1
 pydantic==2.10.6
-bullmq>=5.0.0
+bullmq==2.20.3
 redis>=5.0.0
