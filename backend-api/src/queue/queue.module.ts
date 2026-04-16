@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { QueueService } from './queue.service';
+import { QueuePublisher } from './queue-publisher.service';
 import { QUEUE_NAMES } from './queue.constants';
 
 @Module({
@@ -13,8 +14,10 @@ import { QUEUE_NAMES } from './queue.constants';
     }),
     BullModule.registerQueue({ name: QUEUE_NAMES.SEARCH }),
     BullModule.registerQueue({ name: QUEUE_NAMES.SENTIMENT }),
+    BullModule.registerQueue({ name: 'scrape' }),
+    BullModule.registerQueue({ name: 'classify' }),
   ],
-  providers: [QueueService],
-  exports: [QueueService],
+  providers: [QueueService, QueuePublisher],
+  exports: [QueueService, QueuePublisher],
 })
 export class QueueModule {}
