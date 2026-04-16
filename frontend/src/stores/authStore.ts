@@ -2,8 +2,6 @@
 
 import { create } from "zustand";
 
-export type AuthTrigger = "topbar" | "search" | null;
-
 const BACKEND_API = "http://localhost:5000";
 
 interface TokenData {
@@ -24,8 +22,6 @@ interface StoredAuth {
 
 interface AuthState {
   isAuthenticated: boolean;
-  isLoginModalOpen: boolean;
-  authTrigger: AuthTrigger;
   pendingSearchQuery: string | null;
   pendingSearchExecuted: boolean;
   userEmail: string | null;
@@ -33,8 +29,6 @@ interface AuthState {
   userId: string | null;
   isLogoutModalOpen: boolean;
   // Actions
-  openLoginModal: (trigger: AuthTrigger) => void;
-  closeLoginModal: () => void;
   login: (email: string) => void;
   logout: () => void;
   logoutAsync: () => Promise<void>;
@@ -87,8 +81,6 @@ export const useAuthStore = create<AuthState>((set, get) => {
 
   return {
     isAuthenticated: initialState.isAuthenticated,
-    isLoginModalOpen: false,
-    authTrigger: null,
     pendingSearchQuery: null,
     pendingSearchExecuted: false,
     userEmail: initialState.userEmail,
@@ -96,17 +88,9 @@ export const useAuthStore = create<AuthState>((set, get) => {
     userId: initialState.userId,
     isLogoutModalOpen: false,
 
-    openLoginModal: (trigger) =>
-      set({ isLoginModalOpen: true, authTrigger: trigger }),
-
-    closeLoginModal: () =>
-      set({ isLoginModalOpen: false, authTrigger: null }),
-
     login: (email) => {
-      // Called by modals after successful API login — stores data from API response
       set({
         isAuthenticated: true,
-        isLoginModalOpen: false,
         userEmail: email,
         userName: email.split("@")[0],
       });
@@ -116,8 +100,6 @@ export const useAuthStore = create<AuthState>((set, get) => {
       clearAuth();
       set({
         isAuthenticated: false,
-        isLoginModalOpen: false,
-        authTrigger: null,
         pendingSearchQuery: null,
         pendingSearchExecuted: false,
         userEmail: null,
@@ -160,8 +142,6 @@ export const useAuthStore = create<AuthState>((set, get) => {
       clearAuth();
       set({
         isAuthenticated: false,
-        isLoginModalOpen: false,
-        authTrigger: null,
         pendingSearchQuery: null,
         pendingSearchExecuted: false,
         userEmail: null,

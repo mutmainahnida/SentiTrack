@@ -133,7 +133,6 @@ function DashboardContent() {
     pendingSearchQuery,
     setPendingSearchQuery,
     markPendingSearchExecuted,
-    openLoginModal,
   } = useAuthStore();
 
   const urlQuery = searchParams.get("q") ?? "";
@@ -176,7 +175,7 @@ function DashboardContent() {
     if (!searchQuery.trim()) return;
     if (!isAuthenticated) {
       setPendingSearchQuery(searchQuery.trim());
-      openLoginModal("search");
+      router.push("/login");
     } else {
       router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
     }

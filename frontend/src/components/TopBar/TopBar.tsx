@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuthStore } from "@/stores/authStore";
 import { useTheme } from "@/components/ThemeProvider";
 import MaterialIcon from "../MaterialIcon";
@@ -15,9 +15,10 @@ const titleMap: Record<string, string> = {
 
 export default function TopBar() {
   const pathname = usePathname();
+  const router = useRouter();
   const title = titleMap[pathname] ?? "SentiTrack";
   const { theme, toggleTheme } = useTheme();
-  const { isAuthenticated, userName, userEmail, openLoginModal } = useAuthStore();
+  const { isAuthenticated, userName, userEmail } = useAuthStore();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => setMounted(true), []);
@@ -54,12 +55,12 @@ export default function TopBar() {
             </div>
           </div>
         ) : mounted ? (
-          <button
-            onClick={() => openLoginModal("topbar")}
+          <a
+            href="/login"
             className="px-4 py-2 bg-app-primary text-white rounded-lg font-bold text-sm hover:opacity-90"
           >
             Sign In
-          </button>
+          </a>
         ) : null}
       </div>
     </header>

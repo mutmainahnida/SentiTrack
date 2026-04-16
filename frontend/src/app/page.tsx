@@ -9,21 +9,22 @@ import MaterialIcon from "@/components/MaterialIcon";
 export default function LandingPage() {
   const { theme, toggleTheme } = useTheme();
   const router = useRouter();
-  const { isAuthenticated, openLoginModal, setPendingSearchQuery } = useAuthStore();
+  const { isAuthenticated, setPendingSearchQuery } = useAuthStore();
   const [searchQuery, setSearchQuery] = useState("");
 
   const handleAnalyze = () => {
     if (!searchQuery.trim()) return;
     if (!isAuthenticated) {
       setPendingSearchQuery(searchQuery.trim());
-      openLoginModal("search");
+      router.push("/login");
     } else {
       router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
     }
   };
 
   const handleGetStarted = () => {
-    openLoginModal("topbar");
+    setPendingSearchQuery(null);
+    router.push("/register");
   };
 
   return (
@@ -68,12 +69,12 @@ export default function LandingPage() {
             </button>
 
             {/* Login */}
-            <button
-              onClick={() => openLoginModal("topbar")}
+            <a
+              href="/login"
               className="px-4 py-2 text-sm font-semibold text-app-muted dark:text-app-muted border border-app-border-strong dark:border-app-border-strong rounded-lg hover:text-app-main dark:hover:text-app-main transition-colors"
             >
               Login
-            </button>
+            </a>
 
             {/* Get Started */}
             <button
