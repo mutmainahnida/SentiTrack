@@ -10,6 +10,7 @@ Complete API reference for all backend endpoints.
 | [Users](api-users.md) | `/api/users` | JWT | User management (CRUD), role-based access |
 | [Search](api-search.md) | `/api/search` | None | Tweet search (raw data) |
 | [Sentiment](api-sentiment.md) | `/api/sentiment` | JWT | Sentiment analysis with Gemini AI |
+| [PRD Efficiency](prd-codebase-efficiency.md) | `docs/prd-codebase-efficiency.md` | Internal | Efficiency roadmap for backend architecture |
 
 ## Base Response Format
 

@@ -165,6 +165,7 @@ Full API reference in `/docs/`:
 | [docs/api-users.md](docs/api-users.md) | User management — CRUD with RBAC |
 | [docs/api-search.md](docs/api-search.md) | Tweet search (public, async) |
 | [docs/api-sentiment.md](docs/api-sentiment.md) | Sentiment analysis + history (JWT protected) |
+| [docs/prd-codebase-efficiency.md](docs/prd-codebase-efficiency.md) | PRD for improving backend efficiency and async job architecture |
 
 ## Scripts
 
