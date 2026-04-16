@@ -8,7 +8,8 @@ X/Twitter sentiment analysis tracker.
 |---------|-------|------|
 | Frontend | Next.js 16 (React 19) | 3000 |
 | Backend API | NestJS + BullMQ + Redis + Prisma | 5000 |
-| Scraper | Express + Puppeteer | 5001 |
+| Scraper | BullMQ Worker (Node.js) | - (internal) |
+| IndoBERT Classifier | BullMQ Worker (Python) | - (internal) |
 | Redis | Redis Alpine | 6380 → 6379 |
 | PostgreSQL | PostgreSQL 16 Alpine | 5432 |
 
@@ -19,11 +20,13 @@ Frontend (Next.js)
     ↓ HTTP
 Backend API (NestJS)
     ├── BullMQ → Redis (job queue)
-    ├── Gemini AI (sentiment analysis)
-    └── Prisma → PostgreSQL (data)
-    ↓ HTTP
-Scraper (Express + Puppeteer)
-    └── Twitter/X (via cookies)
+    ├── Prisma → PostgreSQL (data)
+    └── Redis Pub/Sub (result coordination)
+         ↓ BullMQ
+    Scraper Worker (Node.js BullMQ)
+         └── Twitter/X (via cookies)
+    IndoBERT Worker (Python BullMQ)
+         └── IndoBERT model (sentiment inference)
 ```
 
 ## Local Development
@@ -70,14 +73,17 @@ cd frontend && npm run dev
 # Terminal 2 — Backend API
 cd backend-api && npm run start:dev
 
-# Terminal 3 — Scraper
-cd scraper && npm start
-
-# Terminal 4 — Redis (or use Docker)
+# Terminal 3 — Redis (or use Docker)
 redis-server
 
-# Terminal 5 — PostgreSQL (or use Docker)
+# Terminal 4 — PostgreSQL (or use Docker)
 pg_start
+
+# Terminal 5 — Scraper Worker (Node.js BullMQ)
+cd scraper && npm start
+
+# Terminal 6 — IndoBERT Classifier Worker (Python BullMQ)
+cd indobert-classifier && python -m app.main
 ```
 
 ### Run with Docker
@@ -98,7 +104,6 @@ All services reference `.env` at the project root. Copy and adjust values as nee
 ```env
 # Ports
 BACKEND_PORT=5000
-SCRAPER_PORT=5001
 FRONTEND_PORT=3000
 
 # Database
@@ -109,8 +114,8 @@ REDIS_HOST=localhost
 REDIS_PORT=6379
 
 # Services
-SCRAPER_BASE_URL=http://localhost:5001
 FRONTEND_URL=http://localhost:3000
+CORS_ORIGIN=http://localhost:3000
 
 # Auth
 JWT_ACCESS_SECRET=your_access_secret
@@ -144,7 +149,7 @@ docker compose up --build <service-name>
 docker compose logs -f <service-name>
 ```
 
-**Available services:** `postgres`, `redis`, `scraper`, `backend-api`, `frontend`
+**Available services:** `postgres`, `redis`, `scraper`, `indobert-classifier`, `backend-api`, `frontend`
 
 ```bash
 # Example — rebuild and run backend only
@@ -194,13 +199,14 @@ npx prisma db seed    # Run seed script
 
 ```
 SentiTrack/
-├── docs/              # API documentation
-├── frontend/           # Next.js web app
-├── backend-api/        # NestJS REST API
-│   └── prisma/        # Database schema + migrations
-├── scraper/            # Puppeteer scraper service
+├── docs/                   # API documentation
+├── frontend/                # Next.js web app
+├── backend-api/             # NestJS REST API
+│   └── prisma/             # Database schema + migrations
+├── scraper/                 # BullMQ worker (tweet scraping)
+├── indobert-classifier/     # BullMQ worker (sentiment inference)
 ├── docker-compose.yml
-└── .env               # Environment variables (not committed)
+└── .env                    # Environment variables (not committed)
 ```
 
 ## Default Credentials
