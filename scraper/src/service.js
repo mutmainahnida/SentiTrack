@@ -608,4 +608,7 @@ const PORT = process.env.SCRAPER_PORT || 5001;
   });
 })();
 
+// Start BullMQ worker (after Express is ready)
+require('./worker');
+
 module.exports = app;
