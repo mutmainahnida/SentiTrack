@@ -35,11 +35,9 @@ export class AllExceptionsFilter implements ExceptionFilter {
         message = exception.message;
       }
     } else if (exception instanceof Error) {
-      // Handle AggregateError and other error-like objects
       const msg = exception.message || String(exception);
       message = msg === '[object Object]' || !msg ? JSON.stringify(exception) : msg;
     } else {
-      // Plain object or unknown
       message = typeof exception === 'object' ? JSON.stringify(exception) : String(exception);
     }
 

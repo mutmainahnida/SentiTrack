@@ -1,57 +1,31 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { Job } from 'bullmq';
-import { JobRequestFailedError } from '../../common/errors/job-request-failed.error';
-import { JobRequestTimeoutError } from '../../common/errors/job-request-timeout.error';
-import { GeminiService } from '../../llm/gemini.service';
-import { JOB_TIMEOUT_MS, QUEUE_NAMES } from '../../queue/queue.constants';
-import type {
-  SentimentJobData,
-  SentimentResult,
-} from '../../queue/interfaces/sentiment-job.interface';
-import { QueueService } from '../../queue/queue.service';
-import { ScraperService } from '../../scraper/scraper.service';
+import type { SentimentResult } from '../../queue/interfaces/sentiment-job.interface';
 import { SentimentRepository } from '../repositories/sentiment.repository';
 import { SentimentService } from './sentiment.service';
+import { PipelineOrchestrator } from '../../queue/pipeline-orchestrator.service';
 
 describe('SentimentService', () => {
   let service: SentimentService;
-  let queueService: jest.Mocked<
-    Pick<QueueService, 'enqueueAndWait' | 'storeResult'>
-  >;
-  let scraperService: jest.Mocked<Pick<ScraperService, 'fetchTweets'>>;
-  let geminiService: jest.Mocked<Pick<GeminiService, 'analyzeTweets'>>;
+  let pipelineOrchestrator: jest.Mocked<PipelineOrchestrator>;
   let repository: jest.Mocked<
-    Pick<
-      SentimentRepository,
-      'createQueuedJob' | 'markProcessing' | 'markCompleted' | 'markFailed' | 'findHistory'
-    >
+    Pick<SentimentRepository, 'createQueuedJob' | 'findHistory' | 'findByJobId'>
   >;
 
   beforeEach(async () => {
-    queueService = {
-      enqueueAndWait: jest.fn(),
-      storeResult: jest.fn(),
-    };
-    scraperService = {
-      fetchTweets: jest.fn(),
-    };
-    geminiService = {
-      analyzeTweets: jest.fn(),
-    };
+    pipelineOrchestrator = {
+      startPipeline: jest.fn(),
+    } as unknown as jest.Mocked<PipelineOrchestrator>;
+
     repository = {
       createQueuedJob: jest.fn(),
-      markProcessing: jest.fn(),
-      markCompleted: jest.fn(),
-      markFailed: jest.fn(),
       findHistory: jest.fn(),
+      findByJobId: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SentimentService,
-        { provide: QueueService, useValue: queueService },
-        { provide: ScraperService, useValue: scraperService },
-        { provide: GeminiService, useValue: geminiService },
+        { provide: PipelineOrchestrator, useValue: pipelineOrchestrator },
         { provide: SentimentRepository, useValue: repository },
       ],
     }).compile();
@@ -59,7 +33,7 @@ describe('SentimentService', () => {
     service = module.get<SentimentService>(SentimentService);
   });
 
-  it('should persist and enqueue sentiment requests', async () => {
+  it('should create queued job and start pipeline', async () => {
     const result: SentimentResult = {
       query: 'AI',
       total: 1,
@@ -68,102 +42,40 @@ describe('SentimentService', () => {
       tweets: [],
       completedAt: '2026-04-15T00:00:00.000Z',
     };
-    queueService.enqueueAndWait.mockResolvedValue(result);
+    pipelineOrchestrator.startPipeline.mockResolvedValue(result);
 
     const response = await service.requestSentiment({ query: 'AI', limit: 10 }, 'user-1');
 
     expect(repository.createQueuedJob).toHaveBeenCalledWith(
       expect.objectContaining({ query: 'AI', product: 'Top', limit: 10 }),
     );
-    expect(queueService.enqueueAndWait).toHaveBeenCalledWith(
-      QUEUE_NAMES.SENTIMENT,
+    expect(pipelineOrchestrator.startPipeline).toHaveBeenCalledWith(
       expect.objectContaining({ query: 'AI', product: 'Top', limit: 10 }),
-      JOB_TIMEOUT_MS,
     );
-    expect(response.result).toEqual(result);
-  });
-
-  it('should translate timeout errors', async () => {
-    queueService.enqueueAndWait.mockRejectedValue(
-      new Error(`Job sentiment_1 processing timeout after ${JOB_TIMEOUT_MS}ms`),
-    );
-
-    await expect(
-      service.requestSentiment({ query: 'AI' }, 'user-1'),
-    ).rejects.toBeInstanceOf(JobRequestTimeoutError);
-  });
-
-  it('should translate generic queue errors', async () => {
-    queueService.enqueueAndWait.mockRejectedValue(
-      new Error('Redis unavailable'),
-    );
-
-    await expect(
-      service.requestSentiment({ query: 'AI' }, 'user-1'),
-    ).rejects.toBeInstanceOf(JobRequestFailedError);
-  });
-
-  it('should process completed jobs and persist results', async () => {
-    const job = {
-      data: { jobId: 'sentiment_1', query: 'AI', product: 'Top', limit: 20 },
-      attemptsMade: 0,
-    } as Job<SentimentJobData>;
-    const analyzed: SentimentResult = {
-      query: '',
-      total: 1,
+    expect(response).toMatchObject({
+      status: 'completed',
       summary: { positive: 100, negative: 0, neutral: 0 },
-      topInfluential: [],
-      tweets: [],
-      completedAt: '2026-04-15T00:00:00.000Z',
-    };
-    scraperService.fetchTweets.mockResolvedValue({
-      query: 'ignored',
-      product: 'Top',
-      count: 1,
-      tweets: [
-        {
-          id: '1',
-          text: 'AI is great',
-          username: 'user1',
-          name: 'User One',
-          timestamp: 1234567890,
-          views: 100,
-          likes: 10,
-          retweets: 5,
-          replies: 1,
-          permanentUrl: 'https://x.com/u/user1/status/1',
-        },
-      ],
     });
-    geminiService.analyzeTweets.mockResolvedValue(analyzed);
-
-    await service.processJob(job);
-
-    expect(repository.markProcessing).toHaveBeenCalledWith('sentiment_1', 1);
-    expect(repository.markCompleted).toHaveBeenCalledWith(
-      'sentiment_1',
-      expect.objectContaining({ query: 'AI', total: 1 }),
-      1,
-    );
-    expect(queueService.storeResult).toHaveBeenCalledWith(
-      QUEUE_NAMES.SENTIMENT,
-      'sentiment_1',
-      expect.objectContaining({ query: 'AI' }),
-    );
+    expect(response.id).toMatch(/^sentiment_\d+_[a-f0-9]+$/);
   });
 
-  it('should persist failed jobs', async () => {
-    const job = {
-      data: { jobId: 'sentiment_1', query: 'AI', product: 'Top', limit: 20 },
-      attemptsMade: 1,
-    } as Job<SentimentJobData>;
+  it('should return history for user', async () => {
+    const mockHistory = [{ jobId: 'job-1', query: 'AI' }] as const;
+    repository.findHistory.mockResolvedValue(mockHistory as never);
 
-    await service.failJob(job, new Error('Gemini unavailable'));
+    const result = await service.getHistory('user-1', false);
 
-    expect(repository.markFailed).toHaveBeenCalledWith(
-      'sentiment_1',
-      'Gemini unavailable',
-      2,
-    );
+    expect(repository.findHistory).toHaveBeenCalledWith('user-1', false);
+    expect(result).toEqual(mockHistory);
+  });
+
+  it('should look up job by id', async () => {
+    const mockRecord = { jobId: 'sentiment_123', query: 'AI' } as const;
+    repository.findByJobId.mockResolvedValue(mockRecord as never);
+
+    const result = await service.getByJobId('sentiment_123');
+
+    expect(repository.findByJobId).toHaveBeenCalledWith('sentiment_123');
+    expect(result).toEqual(mockRecord);
   });
 });

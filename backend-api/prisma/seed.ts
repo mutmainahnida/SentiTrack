@@ -4,19 +4,15 @@ import * as bcrypt from 'bcrypt';
 const prisma = new PrismaClient();
 
 async function main() {
-  // Swap roles: admin=1, user=2
-  // Use temp name to avoid unique constraint on title during swap
   const existingRole1 = await prisma.role.findUnique({ where: { id: 1 } });
   const existingRole2 = await prisma.role.findUnique({ where: { id: 2 } });
 
   if (existingRole1 && existingRole1.title === 'user' && existingRole2 && existingRole2.title === 'admin') {
-    // Need to swap — use temp name to avoid unique conflict
     await prisma.role.update({ where: { id: 1 }, data: { title: '_temp_admin' } });
     await prisma.role.update({ where: { id: 2 }, data: { title: 'user' } });
     await prisma.role.update({ where: { id: 1 }, data: { title: 'admin' } });
     console.log('Roles swapped: admin (id=1), user (id=2)');
   } else {
-    // Create or upsert
     await prisma.role.upsert({
       where: { id: 1 },
       update: { title: 'admin' },
@@ -56,7 +52,6 @@ async function main() {
   });
   console.log('Regular user → roleId=2');
 
-  // Also fix any other users that had the old roleId mapping
   await prisma.user.updateMany({
     where: { email: { notIn: ['admin@gmail.com', 'user@gmail.com'] } },
     data: { roleId: 2 },

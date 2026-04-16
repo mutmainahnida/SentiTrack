@@ -1,12 +1,9 @@
+import { Module, forwardRef } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
-import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaModule } from '../prisma/prisma.module';
 import { QueueModule } from '../queue/queue.module';
-import { ScraperModule } from '../scraper/scraper.module';
-import { LLMModule } from '../llm/llm.module';
 import { SentimentController } from './controllers/sentiment.controller';
-import { SentimentProcessor } from './processors/sentiment.processor';
 import { SentimentRepository } from './repositories/sentiment.repository';
 import { SentimentService } from './services/sentiment.service';
 
@@ -20,11 +17,9 @@ import { SentimentService } from './services/sentiment.service';
       }),
     }),
     PrismaModule,
-    QueueModule,
-    ScraperModule,
-    LLMModule,
+    forwardRef(() => QueueModule),
   ],
   controllers: [SentimentController],
-  providers: [SentimentProcessor, SentimentRepository, SentimentService],
+  providers: [SentimentRepository, SentimentService],
 })
 export class SentimentModule {}

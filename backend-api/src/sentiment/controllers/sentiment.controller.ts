@@ -10,8 +10,6 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiResponseFactory } from '../../common/api-response.util';
-import { JobRequestFailedError } from '../../common/errors/job-request-failed.error';
-import { JobRequestTimeoutError } from '../../common/errors/job-request-timeout.error';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -43,7 +41,6 @@ export class SentimentController {
     @Query('limit') limit?: string,
     @Query('jobId') jobId?: string,
   ) {
-    // Single job by jobId — GET /api/sentiment?jobId=sentiment_xxx
     if (jobId) {
       const record = await this.sentimentService.getByJobId(jobId);
       if (!record) {
@@ -105,28 +102,6 @@ export class SentimentController {
       const result = await this.sentimentService.requestSentiment(dto, userId);
       return ApiResponseFactory.success('Sentiment analysis completed', result);
     } catch (err: unknown) {
-      if (err instanceof JobRequestTimeoutError) {
-        throw new HttpException(
-          {
-            statusCode: HttpStatus.GATEWAY_TIMEOUT,
-            message: err.message,
-            jobId: err.jobId,
-          },
-          HttpStatus.GATEWAY_TIMEOUT,
-        );
-      }
-
-      if (err instanceof JobRequestFailedError) {
-        throw new HttpException(
-          {
-            statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-            message: err.message,
-            jobId: err.jobId,
-          },
-          HttpStatus.INTERNAL_SERVER_ERROR,
-        );
-      }
-
       const message = err instanceof Error ? err.message : String(err);
       throw new HttpException(
         {

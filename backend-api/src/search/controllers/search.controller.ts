@@ -27,7 +27,6 @@ export class SearchController {
     @Query('page') page?: string,
     @Query('take') take?: string,
   ) {
-    // History listing — GET /api/search?page=1&take=20
     if (q === undefined && query === undefined && !jobId) {
       const pageNum = Math.max(1, Number.parseInt(page ?? '1', 10));
       const takeNum = Math.min(50, Math.max(1, Number.parseInt(take ?? '20', 10)));
@@ -44,7 +43,6 @@ export class SearchController {
       };
     }
 
-    // Single job by jobId — GET /api/search?jobId=search_xxx
     if (jobId) {
       const record = await this.searchService.getByJobId(jobId);
       if (!record) {
