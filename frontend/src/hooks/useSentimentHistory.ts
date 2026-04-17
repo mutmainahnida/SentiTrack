@@ -1,9 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import axios from "axios";
-
-const BACKEND_API = "http://localhost:5000";
+import { authFetch } from "@/stores/authStore";
 
 export type TweetSentiment = "positive" | "neutral" | "negative";
 
@@ -89,16 +87,20 @@ export function useSentimentHistory() {
     setLoading(true);
     setError(null);
     try {
-      const { data } = await axios.get<HistoryResponse>(
-        `${BACKEND_API}/api/sentiment`,
-        {
-          params: { page: pageNum, take: 20 },
-        },
+      const res = await authFetch(
+        `http://localhost:5000/api/sentiment/history?page=${pageNum}&take=20`,
       );
-      setItems(data.data);
-      setPage(data.pagination.page);
-      setTotalPages(data.pagination.totalPages);
-      setTotal(data.pagination.total);
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+      const wrapper = await res.json();
+      // Backend wraps in { success, message, data }
+      const rawData = wrapper.data;
+      const allItems = rawData as HistoryItem[];
+      setItems(allItems);
+      setPage(1);
+      setTotalPages(1);
+      setTotal(allItems.length);
     } catch {
       setError("Gagal memuat riwayat analisis.");
     } finally {
