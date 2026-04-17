@@ -7,6 +7,7 @@ import MaterialIcon from "@/components/MaterialIcon";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { login } = useAuthStore();
   const {
     pendingSearchQuery,
     setPendingSearchQuery,
@@ -34,24 +35,7 @@ export default function LoginPage() {
 
     try {
       const tokens = await apiLogin(email, password);
-
-      localStorage.setItem(
-        "sentitrack_auth",
-        JSON.stringify({
-          accessToken: tokens.accessToken,
-          refreshToken: tokens.refreshToken,
-          userId: tokens.userId ?? "",
-          userEmail: email,
-          userName: email.split("@")[0],
-        })
-      );
-
-      useAuthStore.setState({
-        isAuthenticated: true,
-        userEmail: email,
-        userName: email.split("@")[0],
-        userId: tokens.userId ?? null,
-      });
+      login(email, { accessToken: tokens.accessToken, refreshToken: tokens.refreshToken, userId: tokens.userId ?? undefined });
 
       const q = pendingSearchQuery;
       setPendingSearchQuery(null);

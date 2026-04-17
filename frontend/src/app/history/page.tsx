@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useAuthStore } from "@/stores/authStore";
 import Sidebar from "@/components/Sidebar";
 import TopBar from "@/components/TopBar";
 import MaterialIcon from "@/components/MaterialIcon";
@@ -73,12 +74,21 @@ function ScoreBadge({ score }: { score: number }) {
 
 export default function HistoryPage() {
   const router = useRouter();
+  const { isAuthenticated } = useAuthStore();
   const { items, loading, error, page, totalPages, total, filter, setFilter, fetchHistory, setPage } =
     useSentimentHistory();
 
   useEffect(() => {
-    void fetchHistory(1);
-  }, [fetchHistory]);
+    if (!isAuthenticated) {
+      router.replace("/login");
+    }
+  }, [isAuthenticated, router]);
+
+  useEffect(() => {
+    if (isAuthenticated) void fetchHistory(1);
+  }, [isAuthenticated, fetchHistory]);
+
+  if (!isAuthenticated) return null;
 
   const avgScore = computeAvgSentiment(items);
   const peakHour = computePeakHour(items);

@@ -29,7 +29,7 @@ interface AuthState {
   userId: string | null;
   isLogoutModalOpen: boolean;
   // Actions
-  login: (email: string) => void;
+  login: (email: string, tokens?: { accessToken: string; refreshToken: string; userId?: string }) => void;
   logout: () => void;
   logoutAsync: () => Promise<void>;
   openLogoutModal: () => void;
@@ -88,7 +88,16 @@ export const useAuthStore = create<AuthState>((set, get) => {
     userId: initialState.userId,
     isLogoutModalOpen: false,
 
-    login: (email) => {
+    login: (email: string, tokens?: { accessToken: string; refreshToken: string; userId?: string }) => {
+      if (tokens) {
+        saveAuth({
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+          userId: tokens.userId ?? "",
+          userEmail: email,
+          userName: email.split("@")[0],
+        });
+      }
       set({
         isAuthenticated: true,
         userEmail: email,

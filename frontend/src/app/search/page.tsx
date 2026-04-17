@@ -1,7 +1,8 @@
 "use client";
 
 import { Suspense, useState, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
+import { useAuthStore } from "@/stores/authStore";
 import Sidebar from "@/components/Sidebar";
 import TopBar from "@/components/TopBar";
 import MaterialIcon from "@/components/MaterialIcon";
@@ -322,6 +323,17 @@ function SearchContent() {
 }
 
 export default function SearchPage() {
+  const router = useRouter();
+  const { isAuthenticated } = useAuthStore();
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.replace("/login");
+    }
+  }, [isAuthenticated, router]);
+
+  if (!isAuthenticated) return null;
+
   return (
     <Suspense fallback={null}>
       <SearchContent />
