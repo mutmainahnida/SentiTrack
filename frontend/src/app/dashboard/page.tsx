@@ -484,6 +484,17 @@ function DashboardContent() {
 }
 
 export default function DashboardPage() {
+  const router = useRouter();
+  const { isAuthenticated } = useAuthStore();
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.replace("/login");
+    }
+  }, [isAuthenticated, router]);
+
+  if (!isAuthenticated) return null;
+
   return (
     <Suspense fallback={null}>
       <DashboardContent />
