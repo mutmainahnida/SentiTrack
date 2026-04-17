@@ -30,6 +30,7 @@ async function loginToX(username, password, email) {
   console.log('[auth] Launching browser...');
 
   const chromePathCandidates = [
+    process.env.PUPPETEER_EXECUTABLE_PATH || '/opt/google/chrome/google-chrome',
     'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
     'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
     process.env.LOCALAPPDATA + '\\Google\\Chrome\\Application\\chrome.exe',
@@ -356,6 +357,7 @@ async function manualLogin() {
   const userDataDir = path.join(__dirname, '..', '.chrome-profile');
 
   const chromePathCandidates = [
+    process.env.PUPPETEER_EXECUTABLE_PATH || '/opt/google/chrome/google-chrome',
     'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
     'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
     process.env.LOCALAPPDATA + '\\Google\\Chrome\\Application\\chrome.exe',

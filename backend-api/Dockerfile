@@ -17,10 +17,10 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/prisma ./prisma
 COPY package.json ./
-COPY docker-entrypoint.sh ./
+COPY docker-entrypoint.sh /usr/local/bin/
 
-RUN chmod +x docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x node_modules/.bin/prisma
 
 EXPOSE 5000
-ENTRYPOINT ["./docker-entrypoint.sh"]
+ENTRYPOINT ["docker-entrypoint.sh"]

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import axios from "axios";
+import { authFetch } from "@/stores/authStore";
 
 const BACKEND_API = "http://localhost:5000";
 
@@ -65,14 +65,22 @@ export function useSearchAnalysis() {
     }, 2500);
 
     try {
-      const { data: apiData } = await axios.post(`${BACKEND_API}/api/sentiment`, {
-        query: searchQuery,
-        limit: 50,
+      const res = await authFetch(`${BACKEND_API}/api/sentiment`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: searchQuery, limit: 50 }),
       });
 
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+
+      const apiData = await res.json();
       clearInterval(messageInterval);
 
-      const { result: sentimentResult } = apiData;
+      // Backend returns { success, message, data: { jobId, status, createdAt, result: { query, total, summary, tweets, topInfluential } } }
+      const wrapper = apiData as { success: boolean; message: string; data: { jobId: string; status: string; createdAt: string; result: { query: string; total: number; summary: { positive: number; negative: number; neutral: number }; tweets: Record<string, unknown>[]; topInfluential: Record<string, unknown>[] } } };
+      const sentimentResult = wrapper.data.result;
       const { summary, tweets: allTweets, topInfluential } = sentimentResult;
 
       // Sentiment percentages from backend
@@ -88,7 +96,7 @@ export function useSearchAnalysis() {
         : 20 + Math.round(positive);
 
       // Map all tweets from backend
-      const tweets: ScrapedTweet[] = (allTweets || []).map((t: Record<string, unknown>) => ({
+      const tweets: ScrapedTweet[] = (allTweets || []).map((t) => ({
         tweetId: String(t.tweetId || ""),
         text: String(t.text || ""),
         username: String(t.username || ""),
@@ -103,7 +111,7 @@ export function useSearchAnalysis() {
       }));
 
       // Map top influential tweets
-      const topInfluentialMapped: ScrapedTweet[] = (topInfluential || []).map((t: Record<string, unknown>) => ({
+      const topInfluentialMapped: ScrapedTweet[] = (topInfluential || []).map((t) => ({
         tweetId: String(t.tweetId || ""),
         text: String(t.text || ""),
         username: String(t.username || ""),
@@ -137,9 +145,9 @@ export function useSearchAnalysis() {
         .map(([w]) => w.charAt(0).toUpperCase() + w.slice(1));
 
       const finalResult: SentimentResult = {
-        jobId: String(apiData.jobId || `job_${Date.now()}`),
-        status: String(apiData.status || "completed"),
-        createdAt: String(apiData.createdAt || new Date().toISOString()),
+        jobId: String(wrapper.data.jobId || `job_${Date.now()}`),
+        status: String(wrapper.data.status || "completed"),
+        createdAt: String(wrapper.data.createdAt || new Date().toISOString()),
         query: String(sentimentResult.query || searchQuery),
         score,
         positive,

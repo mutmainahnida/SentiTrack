@@ -17,7 +17,7 @@ services:
     environment:
       POSTGRES_DB: sentitrack
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: 236ndntm
+      POSTGRES_PASSWORD: Nd123
     ports:
       - "5432:5432"
     volumes:
@@ -68,7 +68,8 @@ services:
       - REQUIRED=JWT_ACCESS_SECRET,JWT_REFRESH_SECRET,DATABASE_URL,REDIS_HOST,REDIS_PORT,GEMINI_API_KEY
       - REDIS_HOST=sentitrack-redis
       - REDIS_PORT=6379
-      - DATABASE_URL=postgresql://postgres:236ndntm@sentitrack-postgres:5432/sentitrack?schema=public
+      - SCRAPER_BASE_URL=http://sentitrack-scraper:${SCRAPER_PORT}
+      - DATABASE_URL=postgresql://postgres:Nd123@sentitrack-postgres:5432/sentitrack?schema=public
     depends_on:
       redis:
         condition: service_healthy
