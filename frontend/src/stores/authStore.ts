@@ -22,6 +22,7 @@ interface StoredAuth {
 
 interface AuthState {
   isAuthenticated: boolean;
+  isHydrated: boolean;
   pendingSearchQuery: string | null;
   pendingSearchExecuted: boolean;
   userEmail: string | null;
@@ -39,6 +40,7 @@ interface AuthState {
   resetAuth: () => void;
   getAccessToken: () => string | null;
   getRefreshToken: () => string | null;
+  hydrate: () => void;
 }
 
 function loadStoredAuth(): StoredAuth | null {
@@ -62,114 +64,113 @@ function clearAuth(): void {
   localStorage.removeItem("sentitrack_auth");
 }
 
-export const useAuthStore = create<AuthState>((set, get) => {
-  // Initialize from localStorage on client
-  const stored = loadStoredAuth();
-  const initialState = stored
-    ? {
+export const useAuthStore = create<AuthState>((set, get) => ({
+  // Always start as unauthenticated — hydration from localStorage happens in useEffect
+  isAuthenticated: false,
+  isHydrated: false,
+  pendingSearchQuery: null,
+  pendingSearchExecuted: false,
+  userEmail: null,
+  userName: null,
+  userId: null,
+  isLogoutModalOpen: false,
+
+  hydrate: () => {
+    const stored = loadStoredAuth();
+    if (stored) {
+      set({
         isAuthenticated: true,
+        isHydrated: true,
         userId: stored.userId,
         userName: stored.userName,
         userEmail: stored.userEmail,
-      }
-    : {
-        isAuthenticated: false,
-        userId: null,
-        userName: null,
-        userEmail: null,
-      };
+      });
+    } else {
+      set({ isHydrated: true });
+    }
+  },
 
-  return {
-    isAuthenticated: initialState.isAuthenticated,
-    pendingSearchQuery: null,
-    pendingSearchExecuted: false,
-    userEmail: initialState.userEmail,
-    userName: initialState.userName,
-    userId: initialState.userId,
-    isLogoutModalOpen: false,
-
-    login: (email: string, tokens?: { accessToken: string; refreshToken: string; userId?: string }) => {
-      if (tokens) {
-        saveAuth({
-          accessToken: tokens.accessToken,
-          refreshToken: tokens.refreshToken,
-          userId: tokens.userId ?? "",
-          userEmail: email,
-          userName: email.split("@")[0],
-        });
-      }
-      set({
-        isAuthenticated: true,
+  login: (email: string, tokens?: { accessToken: string; refreshToken: string; userId?: string }) => {
+    if (tokens) {
+      saveAuth({
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+        userId: tokens.userId ?? "",
         userEmail: email,
         userName: email.split("@")[0],
       });
-    },
+    }
+    set({
+      isAuthenticated: true,
+      userEmail: email,
+      userName: email.split("@")[0],
+    });
+  },
 
-    logout: () => {
-      clearAuth();
-      set({
-        isAuthenticated: false,
-        pendingSearchQuery: null,
-        pendingSearchExecuted: false,
-        userEmail: null,
-        userName: null,
-        userId: null,
-        isLogoutModalOpen: false,
-      });
-    },
+  logout: () => {
+    clearAuth();
+    set({
+      isAuthenticated: false,
+      pendingSearchQuery: null,
+      pendingSearchExecuted: false,
+      userEmail: null,
+      userName: null,
+      userId: null,
+      isLogoutModalOpen: false,
+    });
+  },
 
-    logoutAsync: async () => {
-      const accessToken = get().getAccessToken();
-      const userId = get().userId;
-      if (accessToken && userId) {
-        try {
-          await fetch(`${BACKEND_API}/api/auth/logout`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${accessToken}`,
-            },
-            body: JSON.stringify({ userId }),
-          });
-        } catch {
-          // Ignore network errors on logout
-        }
+  logoutAsync: async () => {
+    const accessToken = get().getAccessToken();
+    const userId = get().userId;
+    if (accessToken && userId) {
+      try {
+        await fetch(`${BACKEND_API}/api/auth/logout`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({ userId }),
+        });
+      } catch {
+        // Ignore network errors on logout
       }
-      get().logout();
-    },
+    }
+    get().logout();
+  },
 
-    openLogoutModal: () => set({ isLogoutModalOpen: true }),
-    closeLogoutModal: () => set({ isLogoutModalOpen: false }),
+  openLogoutModal: () => set({ isLogoutModalOpen: true }),
+  closeLogoutModal: () => set({ isLogoutModalOpen: false }),
 
-    setPendingSearchQuery: (query) =>
-      set({ pendingSearchQuery: query }),
+  setPendingSearchQuery: (query) =>
+    set({ pendingSearchQuery: query }),
 
-    markPendingSearchExecuted: () =>
-      set({ pendingSearchExecuted: true }),
+  markPendingSearchExecuted: () =>
+    set({ pendingSearchExecuted: true }),
 
-    resetAuth: () => {
-      clearAuth();
-      set({
-        isAuthenticated: false,
-        pendingSearchQuery: null,
-        pendingSearchExecuted: false,
-        userEmail: null,
-        userName: null,
-        userId: null,
-      });
-    },
+  resetAuth: () => {
+    clearAuth();
+    set({
+      isAuthenticated: false,
+      pendingSearchQuery: null,
+      pendingSearchExecuted: false,
+      userEmail: null,
+      userName: null,
+      userId: null,
+    });
+  },
 
-    getAccessToken: () => {
-      const stored = loadStoredAuth();
-      return stored?.accessToken ?? null;
-    },
+  getAccessToken: () => {
+    const stored = loadStoredAuth();
+    return stored?.accessToken ?? null;
+  },
 
-    getRefreshToken: () => {
-      const stored = loadStoredAuth();
-      return stored?.refreshToken ?? null;
-    },
-  };
-});
+  getRefreshToken: () => {
+    const stored = loadStoredAuth();
+    return stored?.refreshToken ?? null;
+  },
+}));
 
 // ─── Auth API helpers ────────────────────────────────────────────────────────
 
