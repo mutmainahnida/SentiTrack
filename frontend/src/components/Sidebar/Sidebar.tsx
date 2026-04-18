@@ -78,7 +78,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                 `}
               >
                 <MaterialIcon name={item.icon} className="text-lg sm:text-xl flex-shrink-0" />
-                <span className="text-xs sm:text-sm hidden xl:inline">{item.label}</span>
+                <span className='text-xs sm:text-sm ${isOpen ? "inline" : "hidden"} lg:hidden xl:inline'>{item.label}</span>
               </a>
             );
           })}
@@ -104,7 +104,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   );
 }
 
-// Mobile hamburger button — rendered outside sidebar
+// Mobile 
 export function SidebarToggle({ onClick }: { onClick: () => void }) {
   return (
     <button

@@ -263,7 +263,7 @@ function SearchContent() {
     <div className="flex h-screen overflow-hidden bg-app-bg dark:bg-app-bg">
       <SidebarToggle onClick={() => setSidebarOpen(true)} />
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0">
+      <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0 lg:pl-16 xl:pl-64">
         <TopBar />
         <div className="flex-1 flex flex-col overflow-y-auto">
           <div className="flex-1 px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 max-w-7xl mx-auto w-full">
