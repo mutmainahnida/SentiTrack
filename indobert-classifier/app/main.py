@@ -25,7 +25,7 @@ REDIS_PORT = int(os.environ.get("REDIS_PORT", "6379"))
 classifier = None
 
 
-async def process_job(job):
+async def process_job(job, token=None):
     global classifier
     sentiment_id = job.data["sentimentId"]
     query = job.data.get("query", "")
