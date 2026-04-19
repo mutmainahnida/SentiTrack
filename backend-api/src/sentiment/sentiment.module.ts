@@ -21,5 +21,6 @@ import { SentimentService } from './services/sentiment.service';
   ],
   controllers: [SentimentController],
   providers: [SentimentRepository, SentimentService],
+  exports: [SentimentRepository],
 })
 export class SentimentModule {}
