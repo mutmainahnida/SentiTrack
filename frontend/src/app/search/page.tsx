@@ -4,7 +4,10 @@ import { Suspense, useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import TopBar from "@/components/TopBar";
-import MaterialIcon from "@/components/MaterialIcon";
+import { IconByName } from "@/components/ReactIcon";
+import { FaSearch, FaUser, FaThumbsUp, FaComment, FaRetweet, FaHeart, FaEye, FaExternalLinkAlt, FaChartBar, FaDownload, FaExclamationCircle } from "react-icons/fa";
+import { FiTrendingUp } from "react-icons/fi";
+import { FiActivity } from "react-icons/fi";
 import LoadingAnimation from "@/components/LoadingAnimation";
 import { useSearchAnalysis, type ScrapedTweet } from "@/hooks/useSearchAnalysis";
 
@@ -34,26 +37,26 @@ function TweetCard({ tweet, sentiment }: { tweet: ScrapedTweet; sentiment: "posi
       {/* Header Row */}
       <div className="flex items-start gap-4 mb-4">
         <div className="w-12 h-12 rounded-full bg-app-surface-low dark:bg-app-surface-lowest flex items-center justify-center flex-shrink-0">
-          <MaterialIcon name="person" className="text-2xl text-app-muted dark:text-app-muted" />
+          <FaUser className="text-2xl text-app-muted dark:text-app-muted" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2 mb-1">
             <span className="font-bold text-app-main dark:text-app-main">{tweet.name}</span>
             <span className="text-app-muted dark:text-app-muted">@{tweet.username}</span>
             <span className={`ml-auto inline-flex items-center gap-1 border rounded-full px-2.5 py-0.5 text-xs font-semibold ${colors.bg} ${colors.text} ${colors.border}`}>
-              <MaterialIcon name={SENTIMENT_ICONS[sentiment]} />
+              <IconByName name={SENTIMENT_ICONS[sentiment]} />
               {sentiment.charAt(0).toUpperCase() + sentiment.slice(1)}
             </span>
           </div>
           <div className="flex flex-wrap items-center gap-2 text-xs text-app-muted dark:text-app-muted">
             {tweet.sentimentScore > 0 && (
               <span className="flex items-center gap-0.5">
-                <MaterialIcon name="thumb_up" className="text-[10px]" />
+                <FaThumbsUp className="text-[10px]" />
                 {tweet.sentimentScore > 0 ? `+${tweet.sentimentScore}` : tweet.sentimentScore}
               </span>
             )}
             <span className="flex items-center gap-0.5">
-              <MaterialIcon name="insights" className="text-[10px]" />
+              <IconByName name="insights" className="text-[10px]" />
               Influence: {formatNumber(tweet.influenceScore)}
             </span>
           </div>
@@ -66,16 +69,16 @@ function TweetCard({ tweet, sentiment }: { tweet: ScrapedTweet; sentiment: "posi
       {/* Stats Row */}
       <div className="flex items-center gap-1 text-app-muted dark:text-app-muted text-sm border-t border-app-border/10 dark:border-app-border/10 pt-3">
         <button className="flex items-center gap-1.5 hover:text-app-primary transition-colors px-2 py-1 rounded hover:bg-app-surface-low">
-          <MaterialIcon name="chat_bubble" className="text-base" /><span>{formatNumber(tweet.replies)}</span>
+          <FaComment className="text-base" /><span>{formatNumber(tweet.replies)}</span>
         </button>
         <button className="flex items-center gap-1.5 hover:text-green-500 transition-colors px-2 py-1 rounded hover:bg-green-50 dark:hover:bg-green-900/10">
-          <MaterialIcon name="repeat" className="text-base" /><span>{formatNumber(tweet.retweets)}</span>
+          <FaRetweet className="text-base" /><span>{formatNumber(tweet.retweets)}</span>
         </button>
         <button className="flex items-center gap-1.5 hover:text-red-500 transition-colors px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-900/10">
-          <MaterialIcon name="favorite" className="text-base" /><span>{formatNumber(tweet.likes)}</span>
+          <FaHeart className="text-base" /><span>{formatNumber(tweet.likes)}</span>
         </button>
         <button className="flex items-center gap-1.5 hover:text-app-primary transition-colors px-2 py-1 rounded hover:bg-app-surface-low">
-          <MaterialIcon name="visibility" className="text-base" /><span>{formatNumber(tweet.views)}</span>
+          <FaEye className="text-base" /><span>{formatNumber(tweet.views)}</span>
         </button>
         <a
           href={`https://x.com/i/status/${tweet.tweetId}`}
@@ -83,7 +86,7 @@ function TweetCard({ tweet, sentiment }: { tweet: ScrapedTweet; sentiment: "posi
           rel="noopener noreferrer"
           className="ml-auto flex items-center gap-1.5 hover:text-app-primary transition-colors px-2 py-1 rounded hover:bg-app-surface-low"
         >
-          <MaterialIcon name="open_in_new" className="text-base" />
+          <FaExternalLinkAlt className="text-base" />
         </a>
       </div>
     </article>
@@ -95,7 +98,7 @@ function TopKeywordsCard({ keywords, onKeywordClick }: { keywords: string[]; onK
     <div className="bg-app-bg dark:bg-app-surface-low rounded-xl p-6 border border-app-border/20 dark:border-app-border/20">
       <div className="flex items-center justify-start mb-5">
         <h3 className="text-sm font-bold text-app-main dark:text-app-main">Trending Keywords</h3>
-        <MaterialIcon name="trending_up" className="text-app-primary" />
+        <FiTrendingUp className="text-app-primary" />
       </div>
       <div className="flex flex-wrap gap-2">
         {keywords.map((tag) => (
@@ -104,7 +107,7 @@ function TopKeywordsCard({ keywords, onKeywordClick }: { keywords: string[]; onK
             onClick={() => onKeywordClick(tag)}
             className="bg-app-surface-low dark:bg-app-surface-low text-app-primary dark:text-app-primary rounded-full px-3 py-1.5 text-xs font-semibold hover:bg-app-primary/20 dark:hover:bg-app-primary/20 transition-colors flex items-center gap-1"
           >
-            <MaterialIcon name="search" className="text-[10px]" />
+            <FaSearch className="text-[10px]" />
             {tag}
           </button>
         ))}
@@ -153,7 +156,7 @@ function AnalysisResults({ result, onAnalyze }: { result: { score: number; posit
           </p>
           <div className="mt-4 flex items-center justify-center gap-2">
             <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ${scoreColorClass}`}>
-              <MaterialIcon name={scoreIcon} />
+              <IconByName name={scoreIcon} />
               {scoreLabel}
             </span>
           </div>
@@ -179,7 +182,7 @@ function AnalysisResults({ result, onAnalyze }: { result: { score: number; posit
                 <p className="text-4xl font-black">{result.total.toLocaleString()}</p>
                 <p className="text-sm opacity-80 mt-1">tweets analyzed</p>
               </div>
-              <MaterialIcon name="analytics" className="text-4xl opacity-50" />
+              <FaChartBar className="text-4xl opacity-50" />
             </div>
           </div>
         </div>
@@ -267,7 +270,7 @@ function SearchContent() {
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10 mt-6">
                 <div className="relative flex-1 max-w-4xl">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-app-muted">
-                    <MaterialIcon name="search" />
+                    <FaSearch />
                   </span>
                   <input
                     type="text"
@@ -285,12 +288,12 @@ function SearchContent() {
                     disabled={status === "loading" || !searchValue.trim()}
                     className="flex items-center gap-2 px-5 py-3 bg-app-primary dark:bg-app-primary text-white font-semibold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50"
                   >
-                    <MaterialIcon name="trending_up" />
+                    <FiTrendingUp />
                     <span>{status === "loading" ? "Analyzing..." : "Analyze"}</span>
                   </button>
 
                   <button className="flex items-center gap-2 px-5 py-3 bg-app-surface-lowest dark:bg-app-surface-lowest text-app-primary dark:text-app-primary font-semibold rounded-xl hover:opacity-90 transition-opacity">
-                    <MaterialIcon name="download" />
+                    <FaDownload />
                     <span>Export to CSV</span>
                   </button>
                 </div>
@@ -305,7 +308,7 @@ function SearchContent() {
                 )}
                 {status === "error" && (
                   <div className="flex flex-col items-center justify-center py-16 gap-4">
-                    <MaterialIcon name="error_outline" className="text-5xl text-red-500" />
+                    <FaExclamationCircle className="text-5xl text-red-500" />
                     <p className="text-app-muted dark:text-app-muted">{error}</p>
                     <button onClick={() => handleAnalyze()} className="px-6 py-2 bg-app-primary text-white font-bold rounded-xl hover:opacity-90">Coba Lagi</button>
                   </div>

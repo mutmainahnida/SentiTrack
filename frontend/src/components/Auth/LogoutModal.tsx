@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/stores/authStore";
-import MaterialIcon from "../MaterialIcon";
+import { FaSignOutAlt } from "react-icons/fa";
 
 export default function LogoutModal() {
   const router = useRouter();
@@ -29,7 +29,7 @@ export default function LogoutModal() {
           {/* Header */}
           <div className="flex flex-col items-center px-8 pt-10 pb-6 text-center">
             <div className="w-14 h-14 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-4">
-              <MaterialIcon name="logout" className="text-red-500 text-2xl" />
+              <FaSignOutAlt className="text-red-500 text-2xl" />
             </div>
             <h2 className="text-xl font-black text-app-main dark:text-app-main">
               Logout

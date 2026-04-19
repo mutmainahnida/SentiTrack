@@ -2,7 +2,7 @@
 
 import { create } from "zustand";
 
-const BACKEND_API = "http://localhost:5000";
+const BACKEND_API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
 
 interface TokenData {
   accessToken: string;
@@ -22,6 +22,7 @@ interface StoredAuth {
 
 interface AuthState {
   isAuthenticated: boolean;
+  isLoginModalOpen: boolean;
   pendingSearchQuery: string | null;
   pendingSearchExecuted: boolean;
   userEmail: string | null;
@@ -32,6 +33,8 @@ interface AuthState {
   login: (email: string) => void;
   logout: () => void;
   logoutAsync: () => Promise<void>;
+  openLoginModal: () => void;
+  closeLoginModal: () => void;
   openLogoutModal: () => void;
   closeLogoutModal: () => void;
   setPendingSearchQuery: (query: string | null) => void;
@@ -81,6 +84,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
 
   return {
     isAuthenticated: initialState.isAuthenticated,
+    isLoginModalOpen: false,
     pendingSearchQuery: null,
     pendingSearchExecuted: false,
     userEmail: initialState.userEmail,
@@ -95,6 +99,9 @@ export const useAuthStore = create<AuthState>((set, get) => {
         userName: email.split("@")[0],
       });
     },
+
+    openLoginModal: () => set({ isLoginModalOpen: true }),
+    closeLoginModal: () => set({ isLoginModalOpen: false }),
 
     logout: () => {
       clearAuth();
@@ -142,6 +149,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
       clearAuth();
       set({
         isAuthenticated: false,
+        isLoginModalOpen: false,
         pendingSearchQuery: null,
         pendingSearchExecuted: false,
         userEmail: null,

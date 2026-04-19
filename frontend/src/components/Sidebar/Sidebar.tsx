@@ -3,10 +3,10 @@
 import { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuthStore } from "@/stores/authStore";
-import MaterialIcon from "../MaterialIcon";
+import { IconByName } from "../ReactIcon";
 
 const navItems = [
-  { icon: "dashboard", label: "Dashboard", path: "/dashboard" },
+  { icon: "trending_up", label: "Dashboard", path: "/dashboard" },
   { icon: "search", label: "Search", path: "/search" },
   { icon: "history", label: "History", path: "/history" },
 ];
@@ -45,7 +45,7 @@ export default function Sidebar() {
                   : "text-app-muted hover:text-app-primary hover:bg-app-primary/10 hover:translate-x-1"
               }`}
             >
-              <MaterialIcon name={item.icon} />
+              <IconByName name={item.icon} />
               <span className="text-sm">{item.label}</span>
             </a>
           );
@@ -59,7 +59,7 @@ export default function Sidebar() {
             onClick={openLogoutModal}
             className="flex items-center gap-3 py-3 px-4 w-full rounded-lg transition-all duration-200 text-app-muted border border-transparent hover:border-red-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 group"
           >
-            <MaterialIcon name="logout" className="group-hover:scale-110 transition-transform" />
+            <IconByName name="logout" className="group-hover:scale-110 transition-transform" />
             <span className="text-sm font-bold">Logout</span>
           </button>
         </div>

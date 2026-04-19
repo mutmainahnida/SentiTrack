@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore, apiLogin } from "@/stores/authStore";
-import MaterialIcon from "../MaterialIcon";
+import { FaTimes, FaExclamationCircle, FaEye, FaEyeSlash } from "react-icons/fa";
 
 interface LoginModalProps {
   onSwitchToRegister?: () => void;
@@ -101,7 +101,7 @@ export default function LoginModal({ onSwitchToRegister }: LoginModalProps) {
             onClick={closeLoginModal}
             className="p-2 rounded-full hover:bg-app-surface-low dark:hover:bg-app-surface-low transition-colors text-app-muted dark:text-app-muted"
           >
-            <MaterialIcon name="close" />
+            <FaTimes />
           </button>
         </div>
 
@@ -109,7 +109,7 @@ export default function LoginModal({ onSwitchToRegister }: LoginModalProps) {
         <form onSubmit={handleLogin} className="px-8 py-6 space-y-5">
           {error && (
             <div className="flex items-center gap-2 px-4 py-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-sm text-red-600 dark:text-red-400">
-              <MaterialIcon name="error_outline" className="text-base flex-shrink-0" />
+              <FaExclamationCircle className="flex-shrink-0" />
               {error}
             </div>
           )}
@@ -144,7 +144,7 @@ export default function LoginModal({ onSwitchToRegister }: LoginModalProps) {
                 onClick={() => setShowPassword((v) => !v)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-app-muted dark:text-app-muted hover:text-app-primary dark:hover:text-app-primary transition-colors"
               >
-                <MaterialIcon name={showPassword ? "visibility" : "visibility_off"} />
+                {showPassword ? <FaEyeSlash /> : <FaEye />}
               </button>
             </div>
           </div>
