@@ -15,6 +15,7 @@ RUN --mount=type=cache,target=/tmp/npm_cache \
     npm ci --ignore-scripts 2>/dev/null || npm ci
 
 COPY prisma/ ./prisma/
+COPY docker-entrypoint.sh ./
 RUN npx prisma generate
 
 COPY . .
