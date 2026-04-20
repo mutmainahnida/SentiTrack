@@ -4,29 +4,18 @@ FROM node:20-alpine AS deps
 
 WORKDIR /app
 
-# Install packages (no upgrade to avoid network issues with package index)
+# Essential packages only - no upgrade, minimal set
 RUN apk add --no-cache \
         chromium \
-        chromium-chromedriver \
         nss \
-        freetype \
-        freetype-dev \
-        harfbuzz \
-        harfbuzz-dev \
         ca-certificates \
-        ttf-freefont \
-        fontconfig \
-        fontconfig-dev \
-        libjpeg-turbo \
-        libjpeg-turbo-dev \
-        libpng \
-        libpng-dev \
-        libwebp \
-        libwebp-dev \
-        gcompat \
-        libc6-compat \
         curl \
-        wget
+        wget \
+        fontconfig \
+        libjpeg-turbo \
+        libpng \
+        gcompat \
+        libc6-compat
 
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
@@ -57,7 +46,6 @@ ENV NODE_ENV=production
 ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
 
 COPY --from=deps /usr/bin/chromium-browser /usr/bin/chromium-browser
-COPY --from=deps /usr/bin/chromedriver /usr/bin/chromedriver
 COPY --from=deps /etc/ssl/certs /etc/ssl/certs
 COPY --from=deps /usr/share/fonts /usr/share/fonts
 
