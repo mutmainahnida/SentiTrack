@@ -7,8 +7,6 @@ WORKDIR /app
 ARG NPM_CONFIG_CACHE=/tmp/npm_cache
 ENV NPM_CONFIG_CACHE=$NPM_CONFIG_CACHE
 
-RUN apk add --no-cache curl
-
 COPY package*.json ./
 
 RUN --mount=type=cache,target=/tmp/npm_cache \
@@ -34,8 +32,6 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
-RUN apk add --no-cache curl
-
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/prisma ./prisma
@@ -48,6 +44,6 @@ RUN chmod +x docker-entrypoint.sh \
 EXPOSE 5000
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
-    CMD curl -f http://localhost:5000/health || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://localhost:5000/health || exit 1
 
 ENTRYPOINT ["./docker-entrypoint.sh"]
