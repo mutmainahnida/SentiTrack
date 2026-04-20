@@ -253,9 +253,9 @@ export default function HistoryPage() {
                               <td className="px-3 sm:px-6 py-3 sm:py-5">
                                 <div className="flex items-center justify-center gap-1 transition-opacity">
                                   <button
-                                    onClick={() => router.push(`/search?q=${encodeURIComponent(item.query)}`)}
+                                    onClick={() => router.push(`/history/detail/${item.jobId}?q=${encodeURIComponent(item.query)}`)}
                                     className="p-1 sm:p-1.5 rounded-md text-app-muted dark:text-app-muted hover:text-app-primary dark:hover:text-app-primary hover:bg-app-surface-low dark:hover:bg-app-surface-low transition-colors"
-                                    title="Lihat"
+                                    title="Lihat Detail"
                                   >
                                     <FaEye className="text-base" />
                                   </button>
