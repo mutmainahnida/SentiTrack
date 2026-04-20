@@ -234,7 +234,8 @@ function DashboardContent() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-gradient-to-br from-app-bg to-app-surface-low/50 dark:from-app-bg dark:to-app-surface/50">
-      <Sidebar />
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <SidebarToggle onClick={() => setSidebarOpen(true)} />
       <PageLayout>
         <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0 lg:pl-16 xl:pl-64">
           <TopBar onSidebarToggle={() => setSidebarOpen(true)} />
