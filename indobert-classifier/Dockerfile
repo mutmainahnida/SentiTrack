@@ -4,11 +4,16 @@ FROM python:3.11-slim AS builder
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Use faster mirrors and handle network issues gracefully
+RUN echo 'Acquire::Retries 3;' > /etc/apt/apt.conf.d/99retry && \
+    echo 'Acquire::http::Timeout "30";' >> /etc/apt/apt.conf.d/99retry && \
+    echo 'Acquire::https::Timeout "60";' >> /etc/apt/apt.conf.d/99retry && \
+    apt-get update && apt-get install -y --no-install-recommends \
         curl \
         gcc \
         git \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* || \
+    (echo "apt-get update failed, retrying..." && apt-get update && apt-get install -y --no-install-recommends curl gcc git)
 
 RUN mkdir -p /root/.cache/huggingface
 
@@ -19,7 +24,8 @@ RUN pip install --no-cache-dir --upgrade pip wheel setuptools
 RUN pip install --no-cache-dir \
     torch \
     torchvision \
-    --index-url https://download.pytorch.org/whl/cpu
+    --index-url https://download.pytorch.org/whl/cpu || \
+    pip install --no-cache-dir torch torchvision
 
 RUN pip install --no-cache-dir \
     transformers \
@@ -32,10 +38,14 @@ FROM python:3.11-slim AS runner
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN echo 'Acquire::Retries 3;' > /etc/apt/apt.conf.d/99retry && \
+    echo 'Acquire::http::Timeout "30";' >> /etc/apt/apt.conf.d/99retry && \
+    echo 'Acquire::https::Timeout "60";' >> /etc/apt/apt.conf.d/99retry && \
+    apt-get update && apt-get install -y --no-install-recommends \
         curl \
         libgomp1 \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* || \
+    (echo "apt-get update failed, retrying..." && apt-get update && apt-get install -y --no-install-recommends curl libgomp1)
 
 RUN mkdir -p /root/.cache/huggingface
 
