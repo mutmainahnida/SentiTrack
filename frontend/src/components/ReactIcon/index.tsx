@@ -23,6 +23,7 @@ export const ICON_MAP: Record<string, IconType> = {
   // Search & Discovery
   search: FaSearch,
   trending_up: FiTrendingUp,
+  menu: FaSearch, // Using FaSearch as placeholder, replace with actual menu icon
 
   // Analytics & Stats
   monitoring: FaChartLine,
@@ -64,6 +65,11 @@ export const ICON_MAP: Record<string, IconType> = {
   tag: FaExternalLinkAlt,
   link: FaExternalLinkAlt,
   code: FaExternalLinkAlt,
+
+  // Sentiment
+  sentiment_satisfied: FaCheckCircle,
+  sentiment_neutral: FaChartLine,
+  sentiment_dissatisfied: FaExclamationCircle,
 };
 
 export default function ReactIcon({ icon: Icon, className = "", style }: MaterialIconProps) {
