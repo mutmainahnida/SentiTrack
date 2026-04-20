@@ -32,21 +32,27 @@ services:
     build:
       context: ./scraper
     container_name: sentitrack-scraper
-    ports:
-      - "${SCRAPER_PORT}:${SCRAPER_PORT}"
     env_file:
       - .env
     environment:
-      - PORT=${SCRAPER_PORT}
+      - NODE_ENV=production
+      - REDIS_HOST=sentitrack-redis
+      - REDIS_PORT=6379
     volumes:
       - ./scraper/results:/app/results
       - ./scraper/cookies.json:/app/cookies.json
-    healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:${SCRAPER_PORT}/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
+
+  indobert-classifier:
+    build:
+      context: ./indobert-classifier
+    container_name: sentitrack-indobert
+    environment:
+      - DEVICE=${DEVICE:-cpu}
+      - BATCH_SIZE=${BATCH_SIZE:-32}
+      - MAX_LENGTH=${MAX_LENGTH:-128}
+      - REDIS_HOST=sentitrack-redis
+      - REDIS_PORT=6379
+      - REDIS_URL=redis://sentitrack-redis:6379
 
   backend-api:
     build:
@@ -59,17 +65,14 @@ services:
     environment:
       - PORT=${BACKEND_PORT}
       - NODE_ENV=production
-      - REQUIRED=JWT_ACCESS_SECRET,JWT_REFRESH_SECRET,DATABASE_URL,REDIS_HOST,REDIS_PORT,SCRAPER_BASE_URL,GEMINI_API_KEY
+      - REQUIRED=JWT_ACCESS_SECRET,JWT_REFRESH_SECRET,DATABASE_URL,REDIS_HOST,REDIS_PORT,GEMINI_API_KEY
       - REDIS_HOST=sentitrack-redis
       - REDIS_PORT=6379
-      - SCRAPER_BASE_URL=http://sentitrack-scraper:${SCRAPER_PORT}
       - DATABASE_URL=postgresql://postgres:236ndntm@sentitrack-postgres:5432/sentitrack?schema=public
     depends_on:
       redis:
         condition: service_healthy
       postgres:
-        condition: service_healthy
-      scraper:
         condition: service_healthy
 
   frontend:

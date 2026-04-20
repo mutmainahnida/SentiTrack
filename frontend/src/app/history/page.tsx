@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Sidebar from "@/components/Sidebar";
+import { useAuthStore } from "@/stores/authStore";
+import Sidebar, { SidebarToggle } from "@/components/Sidebar";
 import TopBar from "@/components/TopBar";
 import { IconByName } from "@/components/ReactIcon";
 import { FaSearch, FaDownload, FaExclamationCircle, FaHistory, FaEye, FaSyncAlt, FaChevronLeft, FaChevronRight } from "react-icons/fa";
@@ -74,45 +75,56 @@ function ScoreBadge({ score }: { score: number }) {
 
 export default function HistoryPage() {
   const router = useRouter();
+  const { isAuthenticated } = useAuthStore();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const { items, loading, error, page, totalPages, total, filter, setFilter, fetchHistory, setPage } =
     useSentimentHistory();
 
   useEffect(() => {
-    void fetchHistory(1);
-  }, [fetchHistory]);
+    if (!isAuthenticated) {
+      router.replace("/login");
+    }
+  }, [isAuthenticated, router]);
+
+  useEffect(() => {
+    if (isAuthenticated) void fetchHistory(1);
+  }, [isAuthenticated, fetchHistory]);
+
+  if (!isAuthenticated) return null;
 
   const avgScore = computeAvgSentiment(items);
   const peakHour = computePeakHour(items);
 
   return (
     <div className="flex h-screen overflow-hidden bg-app-bg dark:bg-app-bg">
-      <Sidebar />
+      <SidebarToggle onClick={() => setSidebarOpen(true)} />
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <PageLayout>
-        <div className="ml-64 flex-1 flex flex-col h-full overflow-hidden">
+        <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0 lg:pl-16 xl:pl-64">
           <TopBar />
           <div className="flex-1 flex flex-col overflow-y-auto">
-            <div className="flex-1 px-8 py-8 max-w-7xl mx-auto w-full flex flex-col gap-8">
+            <div className="flex-1 px-4 sm:px-6 lg:px-8 py-6 sm:py-8 max-w-7xl mx-auto w-full flex flex-col gap-6 sm:gap-8">
 
               {/* Stats Bento */}
-              <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                 {/* Total Scans */}
-                <div className="bg-app-bg dark:bg-app-surface-low rounded-xl border border-app-border-strong dark:border-app-border-strong p-6 shadow-sm">
-                  <p className="text-xs font-bold text-app-muted dark:text-app-muted uppercase tracking-wider mb-1">Total Scans</p>
+                <div className="bg-app-bg dark:bg-app-surface-low rounded-xl sm:rounded-2xl border border-app-border-strong dark:border-app-border-strong p-4 sm:p-6 shadow-sm">
+                  <p className="text-[10px] sm:text-xs font-bold text-app-muted dark:text-app-muted uppercase tracking-wider mb-1">Total Scans</p>
                   <div className="flex items-end gap-2">
-                    <span className="text-3xl font-bold text-app-main dark:text-app-main">{total.toLocaleString()}</span>
-                    <span className="text-emerald-500 text-xs font-bold mb-1">analisis</span>
+                    <span className="text-2xl sm:text-3xl font-bold text-app-main dark:text-app-main">{total.toLocaleString()}</span>
+                    <span className="text-emerald-500 text-[10px] sm:text-xs font-bold mb-1">analisis</span>
                   </div>
                 </div>
 
                 {/* Avg. Sentiment */}
-                <div className="bg-app-bg dark:bg-app-surface-low rounded-xl border border-app-border-strong dark:border-app-border-strong p-6 shadow-sm">
-                  <p className="text-xs font-bold text-app-muted dark:text-app-muted uppercase tracking-wider mb-1">Avg. Overall Score</p>
+                <div className="bg-app-bg dark:bg-app-surface-low rounded-xl sm:rounded-2xl border border-app-border-strong dark:border-app-border-strong p-4 sm:p-6 shadow-sm">
+                  <p className="text-[10px] sm:text-xs font-bold text-app-muted dark:text-app-muted uppercase tracking-wider mb-1">Avg. Overall Score</p>
                   <div className="flex items-end gap-2">
-                    <span className="text-3xl font-bold text-app-main dark:text-app-main">{avgScore}</span>
-                    <span className="text-app-muted text-xs font-bold mb-1">/ 100</span>
+                    <span className="text-2xl sm:text-3xl font-bold text-app-main dark:text-app-main">{avgScore}</span>
+                    <span className="text-app-muted text-[10px] sm:text-xs font-bold mb-1">/ 100</span>
                   </div>
                   {avgScore > 0 && (
-                    <div className="mt-3 h-1.5 bg-app-surface-low dark:bg-app-surface-lowest rounded-full overflow-hidden">
+                    <div className="mt-2 sm:mt-3 h-1 sm:h-1.5 bg-app-surface-low dark:bg-app-surface-lowest rounded-full overflow-hidden">
                       <div
                         className="h-full rounded-full"
                         style={{
@@ -126,17 +138,17 @@ export default function HistoryPage() {
                 </div>
 
                 {/* Peak Hour */}
-                <div className="bg-app-bg dark:bg-app-surface-low rounded-xl border border-app-border-strong dark:border-app-border-strong p-6 shadow-sm">
-                  <p className="text-xs font-bold text-app-muted dark:text-app-muted uppercase tracking-wider mb-1">Peak Hour (WIB)</p>
+                <div className="bg-app-bg dark:bg-app-surface-low rounded-xl sm:rounded-2xl border border-app-border-strong dark:border-app-border-strong p-4 sm:p-6 shadow-sm sm:col-span-2 lg:col-span-1">
+                  <p className="text-[10px] sm:text-xs font-bold text-app-muted dark:text-app-muted uppercase tracking-wider mb-1">Peak Hour (WIB)</p>
                   <div className="flex items-end gap-2">
-                    <span className="text-3xl font-bold text-app-main dark:text-app-main">{peakHour}</span>
-                    <span className="text-app-muted text-xs font-bold mb-1">UTC+7</span>
+                    <span className="text-2xl sm:text-3xl font-bold text-app-main dark:text-app-main">{peakHour}</span>
+                    <span className="text-app-muted text-[10px] sm:text-xs font-bold mb-1">UTC+7</span>
                   </div>
                 </div>
               </section>
 
               {/* Search History Table */}
-              <section className="bg-app-bg dark:bg-app-surface-low rounded-xl border border-app-border-strong dark:border-app-border-strong shadow-sm overflow-hidden flex-1">
+              <section className="bg-app-bg dark:bg-app-surface-low rounded-xl sm:rounded-2xl border border-app-border-strong dark:border-app-border-strong shadow-sm overflow-hidden flex-1">
                 {/* Table header controls */}
                 <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-100 dark:border-app-border-strong">
                   <div className="relative w-72">
@@ -146,7 +158,7 @@ export default function HistoryPage() {
                       placeholder="Cari riwayat..."
                       value={filter}
                       onChange={(e) => setFilter(e.target.value)}
-                      className="w-full h-9 pl-9 pr-4 rounded-lg bg-app-surface-low dark:bg-app-surface-low border border-app-border-strong dark:border-app-border-strong text-app-main dark:text-app-main placeholder:text-app-muted dark:placeholder:text-app-muted focus:outline-none focus:ring-2 focus:ring-app-primary/20 dark:focus:ring-app-primary/20 focus:border-app-primary dark:focus:border-app-primary"
+                      className="w-full h-8 sm:h-9 pl-8 sm:pl-9 pr-3 sm:pr-4 rounded-lg bg-app-surface-low dark:bg-app-surface-low border border-app-border-strong dark:border-app-border-strong text-app-main dark:text-app-main placeholder:text-app-muted dark:placeholder:text-app-muted focus:outline-none focus:ring-2 focus:ring-app-primary/20 dark:focus:ring-app-primary/20 text-xs sm:text-sm"
                     />
                   </div>
                   <button className="flex items-center gap-1.5 h-9 px-3 rounded-lg bg-app-bg dark:bg-app-surface-low border border-app-border-strong dark:border-app-border-strong text-app-main dark:text-app-main hover:bg-app-surface-low dark:hover:bg-app-surface-low transition-colors text-sm">
@@ -158,10 +170,10 @@ export default function HistoryPage() {
                 {/* Table */}
                 <div className="overflow-x-auto">
                   {loading ? (
-                    <div className="flex items-center justify-center py-16">
+                    <div className="flex items-center justify-center py-8 sm:py-16">
                       <div className="flex flex-col items-center gap-3">
-                        <div className="w-8 h-8 border-2 border-app-primary border-t-transparent rounded-full animate-spin" />
-                        <p className="text-sm text-app-muted dark:text-app-muted">Memuat riwayat...</p>
+                        <div className="w-6 h-6 sm:w-8 sm:h-8 border-2 border-app-primary border-t-transparent rounded-full animate-spin" />
+                        <p className="text-xs sm:text-sm text-app-muted dark:text-app-muted">Memuat riwayat...</p>
                       </div>
                     </div>
                   ) : error ? (
@@ -170,7 +182,7 @@ export default function HistoryPage() {
                       <p className="text-sm text-app-muted dark:text-app-muted">{error}</p>
                       <button
                         onClick={() => void fetchHistory(page)}
-                        className="px-4 py-2 bg-app-primary text-white text-sm font-bold rounded-lg hover:opacity-90"
+                        className="px-4 py-2 bg-app-primary text-white text-xs sm:text-sm font-bold rounded-lg hover:opacity-90"
                       >
                         Coba Lagi
                       </button>
@@ -191,14 +203,15 @@ export default function HistoryPage() {
                       )}
                     </div>
                   ) : (
-                    <table className="w-full">
+                    <div className="overflow-x-auto">
+                    <table className="w-full min-w-[500px]">
                       <thead>
                         <tr className="bg-app-surface-low/50 dark:bg-app-surface-low border-b border-app-border-strong dark:border-app-border-strong">
-                          <th className="text-left px-6 py-3 text-xs font-bold text-app-muted dark:text-app-muted uppercase tracking-wide">Keyword</th>
-                          <th className="text-left px-6 py-3 text-xs font-bold text-app-muted dark:text-app-muted uppercase tracking-wide">Tanggal / Waktu</th>
-                          <th className="text-center px-6 py-3 text-xs font-bold text-app-muted dark:text-app-muted uppercase tracking-wide">Sentiment Mix (%)</th>
-                          <th className="text-center px-6 py-3 text-xs font-bold text-app-muted dark:text-app-muted uppercase tracking-wide">Overall Score</th>
-                          <th className="text-center px-6 py-3 text-xs font-bold text-app-muted dark:text-app-muted uppercase tracking-wide">Aksi</th>
+                          <th className="text-left px-3 sm:px-6 py-2 sm:py-3 text-[9px] sm:text-xs font-bold text-app-muted dark:text-app-muted uppercase tracking-wide">Keyword</th>
+                          <th className="text-left px-3 sm:px-6 py-2 sm:py-3 text-[9px] sm:text-xs font-bold text-app-muted dark:text-app-muted uppercase tracking-wide hidden sm:table-cell">Tanggal / Waktu</th>
+                          <th className="text-center px-3 sm:px-6 py-2 sm:py-3 text-[9px] sm:text-xs font-bold text-app-muted dark:text-app-muted uppercase tracking-wide hidden md:table-cell">Sentiment Mix</th>
+                          <th className="text-center px-3 sm:px-6 py-2 sm:py-3 text-[9px] sm:text-xs font-bold text-app-muted dark:text-app-muted uppercase tracking-wide">Skor</th>
+                          <th className="text-center px-3 sm:px-6 py-2 sm:py-3 text-[9px] sm:text-xs font-bold text-app-muted dark:text-app-muted uppercase tracking-wide">Aksi</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 dark:divide-app-surface-container">
@@ -209,46 +222,46 @@ export default function HistoryPage() {
                               key={item.jobId}
                               className="hover:bg-app-surface-low/80 dark:hover:bg-app-surface-low transition-colors group"
                             >
-                              <td className="px-6 py-5">
+                              <td className="px-3 sm:px-6 py-3 sm:py-5">
                                 <button
                                   onClick={() => router.push(`/search?q=${encodeURIComponent(item.query)}`)}
-                                  className="text-sm font-bold text-app-main dark:text-app-main hover:text-app-primary dark:hover:text-app-primary transition-colors text-left"
+                                  className="text-xs sm:text-sm font-bold text-app-main dark:text-app-main hover:text-app-primary dark:hover:text-app-primary transition-colors text-left truncate max-w-[100px] sm:max-w-none"
                                 >
                                   {item.query}
                                 </button>
                               </td>
-                              <td className="px-6 py-5">
-                                <div className="text-sm text-app-muted dark:text-app-muted font-medium">
+                              <td className="px-3 sm:px-6 py-3 sm:py-5 hidden sm:table-cell">
+                                <div className="text-[10px] sm:text-sm text-app-muted dark:text-app-muted font-medium">
                                   {formatDate(item.createdAt)}
                                 </div>
-                                <div className="text-xs text-app-muted dark:text-app-muted opacity-70">
+                                <div className="text-[9px] sm:text-xs text-app-muted dark:text-app-muted opacity-70">
                                   {formatTime(item.createdAt)}
                                 </div>
                               </td>
-                              <td className="px-6 py-5">
+                              <td className="px-3 sm:px-6 py-3 sm:py-5 hidden md:table-cell">
                                 <SentimentDots
                                   positive={item.positivePct}
                                   negative={item.negativePct}
                                   neutral={item.neutralPct}
                                 />
                               </td>
-                              <td className="px-6 py-5">
+                              <td className="px-3 sm:px-6 py-3 sm:py-5">
                                 <div className="flex items-center justify-center">
                                   <ScoreBadge score={score} />
                                 </div>
                               </td>
-                              <td className="px-6 py-5">
+                              <td className="px-3 sm:px-6 py-3 sm:py-5">
                                 <div className="flex items-center justify-center gap-1 transition-opacity">
                                   <button
                                     onClick={() => router.push(`/search?q=${encodeURIComponent(item.query)}`)}
-                                    className="p-1.5 rounded-md text-app-muted dark:text-app-muted hover:text-app-primary dark:hover:text-app-primary hover:bg-app-surface-low dark:hover:bg-app-surface-low transition-colors"
+                                    className="p-1 sm:p-1.5 rounded-md text-app-muted dark:text-app-muted hover:text-app-primary dark:hover:text-app-primary hover:bg-app-surface-low dark:hover:bg-app-surface-low transition-colors"
                                     title="Lihat"
                                   >
                                     <FaEye className="text-base" />
                                   </button>
                                   <button
                                     onClick={() => router.push(`/search?q=${encodeURIComponent(item.query)}`)}
-                                    className="p-1.5 rounded-md text-app-muted dark:text-app-muted hover:text-app-primary dark:hover:text-app-primary hover:bg-app-surface-low dark:hover:bg-app-surface-low transition-colors"
+                                    className="p-1 sm:p-1.5 rounded-md text-app-muted dark:text-app-muted hover:text-app-primary dark:hover:text-app-primary hover:bg-app-surface-low dark:hover:bg-app-surface-low transition-colors"
                                     title="Analisis Ulang"
                                   >
                                     <FaSyncAlt className="text-base" />
@@ -260,14 +273,15 @@ export default function HistoryPage() {
                         })}
                       </tbody>
                     </table>
+                    </div>
                   )}
                 </div>
 
                 {/* Pagination footer */}
                 {!loading && items.length > 0 && (
-                  <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 dark:border-app-border-strong">
-                    <p className="text-xs text-app-muted dark:text-app-muted">
-                      Halaman {page} dari {totalPages} &nbsp;·&nbsp; {total.toLocaleString()} hasil
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-3 sm:px-6 py-3 sm:py-4 border-t border-slate-100 dark:border-app-border-strong">
+                    <p className="text-[10px] sm:text-xs text-app-muted dark:text-app-muted">
+                      Hal. {page} dari {totalPages} &nbsp;·&nbsp; {total.toLocaleString()} hasil
                     </p>
                     <div className="flex items-center gap-1">
                       <button
@@ -275,7 +289,7 @@ export default function HistoryPage() {
                           if (page > 1) void fetchHistory(page - 1);
                         }}
                         disabled={page <= 1}
-                        className="w-8 h-8 flex items-center justify-center rounded-md border border-app-border-strong dark:border-app-border-strong text-app-muted dark:text-app-muted hover:bg-app-primary hover:text-app-surface dark:hover:bg-app-primary transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                        className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-md border border-app-border-strong dark:border-app-border-strong text-app-muted dark:text-app-muted hover:bg-app-primary hover:text-app-surface dark:hover:bg-app-primary transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                       >
                         <FaChevronLeft className="text-base" />
                       </button>
@@ -294,7 +308,7 @@ export default function HistoryPage() {
                           <button
                             key={pageNum}
                             onClick={() => void fetchHistory(pageNum)}
-                            className={`w-8 h-8 flex items-center justify-center rounded-md text-sm font-medium transition-colors ${
+                            className={`w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-md text-[10px] sm:text-sm font-medium transition-colors ${
                               page === pageNum
                                 ? "bg-app-primary dark:bg-app-primary text-white"
                                 : "border border-app-border-strong dark:border-app-border-strong text-app-muted dark:text-app-muted hover:bg-app-primary hover:text-app-surface dark:hover:bg-app-primary"
@@ -309,7 +323,7 @@ export default function HistoryPage() {
                           if (page < totalPages) void fetchHistory(page + 1);
                         }}
                         disabled={page >= totalPages}
-                        className="w-8 h-8 flex items-center justify-center rounded-md border border-app-border-strong dark:border-app-border-strong text-app-muted dark:text-app-muted hover:bg-app-primary hover:text-app-surface dark:hover:bg-app-primary transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                        className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-md border border-app-border-strong dark:border-app-border-strong text-app-muted dark:text-app-muted hover:bg-app-primary hover:text-app-surface dark:hover:bg-app-primary transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                       >
                         <FaChevronRight className="text-base" />
                       </button>
@@ -319,9 +333,9 @@ export default function HistoryPage() {
               </section>
 
               {/* Footer */}
-              <footer className="mt-auto pt-6 pb-2 flex justify-between text-[10px] uppercase tracking-widest font-bold text-app-muted dark:text-app-muted border-t border-app-border-strong dark:border-app-border-strong">
+              <footer className="mt-auto pt-4 sm:pt-6 pb-2 flex flex-col sm:flex-row justify-between items-center gap-2 sm:gap-0 text-[9px] sm:text-[10px] uppercase tracking-widest font-bold text-app-muted dark:text-app-muted border-t border-app-border-strong dark:border-app-border-strong">
                 <span>© 2026 SentiTrack</span>
-                <div className="flex gap-6">
+                <div className="flex gap-3 sm:gap-6">
                   <a href="#" className="hover:text-app-primary dark:hover:text-app-primary transition-colors">System Status</a>
                   <a href="#" className="hover:text-app-primary dark:hover:text-app-primary transition-colors">Privacy Protocol</a>
                   <a href="#" className="hover:text-app-primary dark:hover:text-app-primary transition-colors">Security Center</a>

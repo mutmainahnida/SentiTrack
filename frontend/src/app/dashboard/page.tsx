@@ -3,7 +3,7 @@
 import { Suspense, useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthStore } from "@/stores/authStore";
-import Sidebar from "@/components/Sidebar";
+import Sidebar, { SidebarToggle } from "@/components/Sidebar";
 import TopBar from "@/components/TopBar";
 import { IconByName } from "@/components/ReactIcon";
 import { FaSearch, FaChartLine, FaArrowRight, FaChartBar } from "react-icons/fa";
@@ -141,6 +141,8 @@ function StatCard({ icon, label, value, delay = 0 }: { icon: React.ReactNode; la
 function DashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   const {
     items,
     loading: statsLoading,
@@ -234,10 +236,10 @@ function DashboardContent() {
     <div className="flex h-screen overflow-hidden bg-gradient-to-br from-app-bg to-app-surface-low/50 dark:from-app-bg dark:to-app-surface/50">
       <Sidebar />
       <PageLayout>
-        <div className="ml-64 flex-1 flex flex-col h-full overflow-hidden">
-          <TopBar />
+        <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0 lg:pl-16 xl:pl-64">
+          <TopBar onSidebarToggle={() => setSidebarOpen(true)} />
           <div className="flex-1 flex flex-col overflow-y-auto">
-            <div className="flex-1 px-8 py-8 max-w-7xl mx-auto w-full">
+            <div className="flex-1 px-4 sm:px-6 lg:px-8 py-6 sm:py-8 max-w-7xl mx-auto w-full">
 
               {/* Hero Section */}
               <motion.section
@@ -494,6 +496,21 @@ function DashboardContent() {
 }
 
 export default function DashboardPage() {
+  const router = useRouter();
+  const { isAuthenticated, isHydrated, hydrate } = useAuthStore();
+
+  useEffect(() => {
+    hydrate();
+  }, [hydrate]);
+
+  useEffect(() => {
+    if (isHydrated && !isAuthenticated) {
+      router.replace("/login");
+    }
+  }, [isHydrated, isAuthenticated, router]);
+
+  if (!isHydrated || !isAuthenticated) return null;
+
   return (
     <Suspense fallback={
       <div className="flex items-center justify-center h-screen">

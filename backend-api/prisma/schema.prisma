@@ -38,7 +38,7 @@ model SearchJobHistory {
 
 model SentimentJobHistory {
   id        String  @id @default(uuid())
-  userId    String  // user who requested the sentiment
+  userId    String  
   jobId     String  @unique
   query     String
   product   String  @default("Top")

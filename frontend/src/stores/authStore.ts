@@ -30,7 +30,7 @@ interface AuthState {
   userId: string | null;
   isLogoutModalOpen: boolean;
   // Actions
-  login: (email: string) => void;
+  login: (email: string, tokens?: { accessToken: string; refreshToken: string; userId?: string }) => void;
   logout: () => void;
   logoutAsync: () => Promise<void>;
   openLoginModal: () => void;
@@ -42,6 +42,7 @@ interface AuthState {
   resetAuth: () => void;
   getAccessToken: () => string | null;
   getRefreshToken: () => string | null;
+  hydrate: () => void;
 }
 
 function loadStoredAuth(): StoredAuth | null {
@@ -65,12 +66,23 @@ function clearAuth(): void {
   localStorage.removeItem("sentitrack_auth");
 }
 
-export const useAuthStore = create<AuthState>((set, get) => {
-  // Initialize from localStorage on client
-  const stored = loadStoredAuth();
-  const initialState = stored
-    ? {
+export const useAuthStore = create<AuthState>((set, get) => ({
+  // Always start as unauthenticated — hydration from localStorage happens in useEffect
+  isAuthenticated: false,
+  isHydrated: false,
+  pendingSearchQuery: null,
+  pendingSearchExecuted: false,
+  userEmail: null,
+  userName: null,
+  userId: null,
+  isLogoutModalOpen: false,
+
+  hydrate: () => {
+    const stored = loadStoredAuth();
+    if (stored) {
+      set({
         isAuthenticated: true,
+        isHydrated: true,
         userId: stored.userId,
         userName: stored.userName,
         userEmail: stored.userEmail,
@@ -103,47 +115,47 @@ export const useAuthStore = create<AuthState>((set, get) => {
     openLoginModal: () => set({ isLoginModalOpen: true }),
     closeLoginModal: () => set({ isLoginModalOpen: false }),
 
-    logout: () => {
-      clearAuth();
-      set({
-        isAuthenticated: false,
-        pendingSearchQuery: null,
-        pendingSearchExecuted: false,
-        userEmail: null,
-        userName: null,
-        userId: null,
-        isLogoutModalOpen: false,
-      });
-    },
+  logout: () => {
+    clearAuth();
+    set({
+      isAuthenticated: false,
+      pendingSearchQuery: null,
+      pendingSearchExecuted: false,
+      userEmail: null,
+      userName: null,
+      userId: null,
+      isLogoutModalOpen: false,
+    });
+  },
 
-    logoutAsync: async () => {
-      const accessToken = get().getAccessToken();
-      const userId = get().userId;
-      if (accessToken && userId) {
-        try {
-          await fetch(`${BACKEND_API}/api/auth/logout`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${accessToken}`,
-            },
-            body: JSON.stringify({ userId }),
-          });
-        } catch {
-          // Ignore network errors on logout
-        }
+  logoutAsync: async () => {
+    const accessToken = get().getAccessToken();
+    const userId = get().userId;
+    if (accessToken && userId) {
+      try {
+        await fetch(`${BACKEND_API}/api/auth/logout`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({ userId }),
+        });
+      } catch {
+        // Ignore network errors on logout
       }
-      get().logout();
-    },
+    }
+    get().logout();
+  },
 
-    openLogoutModal: () => set({ isLogoutModalOpen: true }),
-    closeLogoutModal: () => set({ isLogoutModalOpen: false }),
+  openLogoutModal: () => set({ isLogoutModalOpen: true }),
+  closeLogoutModal: () => set({ isLogoutModalOpen: false }),
 
-    setPendingSearchQuery: (query) =>
-      set({ pendingSearchQuery: query }),
+  setPendingSearchQuery: (query) =>
+    set({ pendingSearchQuery: query }),
 
-    markPendingSearchExecuted: () =>
-      set({ pendingSearchExecuted: true }),
+  markPendingSearchExecuted: () =>
+    set({ pendingSearchExecuted: true }),
 
     resetAuth: () => {
       clearAuth();
@@ -158,17 +170,16 @@ export const useAuthStore = create<AuthState>((set, get) => {
       });
     },
 
-    getAccessToken: () => {
-      const stored = loadStoredAuth();
-      return stored?.accessToken ?? null;
-    },
+  getAccessToken: () => {
+    const stored = loadStoredAuth();
+    return stored?.accessToken ?? null;
+  },
 
-    getRefreshToken: () => {
-      const stored = loadStoredAuth();
-      return stored?.refreshToken ?? null;
-    },
-  };
-});
+  getRefreshToken: () => {
+    const stored = loadStoredAuth();
+    return stored?.refreshToken ?? null;
+  },
+}));
 
 // ─── Auth API helpers ────────────────────────────────────────────────────────
 

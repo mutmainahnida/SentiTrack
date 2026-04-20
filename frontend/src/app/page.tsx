@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/stores/authStore";
 import { useTheme } from "@/components/ThemeProvider";
@@ -18,6 +18,20 @@ export default function LandingPage() {
   const router = useRouter();
   const { isAuthenticated, setPendingSearchQuery } = useAuthStore();
   const [searchQuery, setSearchQuery] = useState("");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(e.target as Node)) {
+        setMobileMenuOpen(false);
+      }
+    };
+    if (mobileMenuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [mobileMenuOpen]);
 
   const handleAnalyze = () => {
     if (!searchQuery.trim()) return;
@@ -418,7 +432,7 @@ export default function LandingPage() {
             <span className="text-xl font-black tracking-tighter text-app-main dark:text-app-main">
               SentiTrack
             </span>
-            <span className="text-sm text-app-muted dark:text-app-muted">
+            <span className="text-xs sm:text-sm text-app-muted dark:text-app-muted">
               &copy; 2026 SentiTrack
             </span>
           </div>

@@ -11,7 +11,7 @@ import { SentimentModule } from './sentiment/sentiment.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true, envFilePath: '../.env' }),
+    ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
     ThrottleModule,
     PrismaModule,
     AuthModule,

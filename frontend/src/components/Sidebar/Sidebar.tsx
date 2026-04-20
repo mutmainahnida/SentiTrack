@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuthStore } from "@/stores/authStore";
 import { IconByName } from "../ReactIcon";
@@ -11,7 +11,12 @@ const navItems = [
   { icon: "history", label: "History", path: "/history" },
 ];
 
-export default function Sidebar() {
+interface SidebarProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { isAuthenticated, openLogoutModal } = useAuthStore();
@@ -19,13 +24,38 @@ export default function Sidebar() {
 
   useEffect(() => setMounted(true), []);
 
+  // Close sidebar on route change (mobile)
+  useEffect(() => {
+    onClose();
+  }, [pathname, onClose]);
+
   return (
-    <aside className="fixed left-0 top-0 h-screen w-64 border-r border-app-border-strong dark:border-app-border-strong bg-app-surface-low dark:bg-app-bg flex flex-col py-8 px-6 z-50">
-      {/* Logo */}
-      <div className="mb-12">
-        <h1 className="text-2xl font-black tracking-tighter text-app-main dark:text-app-main">SentiTrack</h1>
-        <p className="text-xs font-medium text-app-primary dark:text-app-primary opacity-70">Precision Analytics</p>
-      </div>
+    <>
+      {/* Mobile: Backdrop overlay */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 lg:hidden"
+          onClick={onClose}
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside
+        className={`
+          fixed left-0 top-0 h-screen z-50 flex flex-col py-6 px-4 sm:px-6 border-r border-app-border-strong dark:border-app-border-strong bg-app-surface-low dark:bg-[#0F172A] transition-transform duration-300 ease-out
+          ${isOpen ? "translate-x-0" : "-translate-x-full"}
+          lg:translate-x-0 lg:w-16 xl:w-64
+        `}
+      >
+        {/* Logo */}
+        <div className="mb-8 sm:mb-12 px-2">
+          <h1 className="text-lg sm:text-xl lg:text-2xl font-black tracking-tighter text-app-main dark:text-app-main whitespace-nowrap">
+            SentiTrack
+          </h1>
+          <p className="text-[10px] sm:text-xs font-medium text-app-primary dark:text-app-primary opacity-70 hidden xl:block">
+            Precision Analytics
+          </p>
+        </div>
 
       {/* Navigation */}
       <nav className="flex-1 space-y-2">

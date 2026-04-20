@@ -1,6 +1,8 @@
 export const QUEUE_NAMES = {
   SEARCH: 'search',
   SENTIMENT: 'sentiment-analysis',
+  SCRAPE: 'scrape',
+  CLASSIFY: 'classify',
 } as const;
 
 export const JOB_TIMEOUT_MS = 300000;
