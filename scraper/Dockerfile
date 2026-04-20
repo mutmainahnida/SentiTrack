@@ -4,8 +4,10 @@ FROM node:20-alpine AS deps
 
 WORKDIR /app
 
-# Essential packages only - no upgrade, minimal set
-RUN apk add --no-cache \
+# Use default mirror with timeout settings for slow connections
+RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.19/main" > /etc/apk/repositories && \
+    echo "https://dl-cdn.alpinelinux.org/alpine/v3.19/community" >> /etc/apk/repositories && \
+    apk add --no-cache \
         chromium \
         nss \
         ca-certificates \
