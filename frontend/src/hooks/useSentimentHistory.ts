@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import axios from "axios";
+import { authFetch } from "@/stores/authStore";
 
 const BACKEND_API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000"; //REFERENCE TO .ENV
 
@@ -90,7 +90,7 @@ export function useSentimentHistory() {
     setError(null);
     try {
       const res = await authFetch(
-        `http://localhost:5000/api/sentiment/history?page=${pageNum}&take=20`,
+        `${BACKEND_API}/api/sentiment/history?page=${pageNum}&take=20`,
       );
       if (!res.ok) {
         throw new Error(`HTTP ${res.status}`);

@@ -12,8 +12,22 @@ const navItems = [
 ];
 
 interface SidebarProps {
-  isOpen: boolean;
-  onClose: () => void;
+  isOpen?: boolean;
+  onClose?: () => void;
+}
+
+export function SidebarToggle({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="fixed top-4 left-4 z-30 lg:hidden p-2 rounded-lg bg-app-surface-low dark:bg-app-surface border border-app-border shadow-sm"
+      aria-label="Open sidebar"
+    >
+      <svg className="w-5 h-5 text-app-main" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+      </svg>
+    </button>
+  );
 }
 
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
@@ -26,7 +40,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   // Close sidebar on route change (mobile)
   useEffect(() => {
-    onClose();
+    if (onClose) onClose();
   }, [pathname, onClose]);
 
   return (
@@ -43,7 +57,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       <aside
         className={`
           fixed left-0 top-0 h-screen z-50 flex flex-col py-6 px-4 sm:px-6 border-r border-app-border-strong dark:border-app-border-strong bg-app-surface-low dark:bg-[#0F172A] transition-transform duration-300 ease-out
-          ${isOpen ? "translate-x-0" : "-translate-x-full"}
+          ${isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
           lg:translate-x-0 lg:w-16 xl:w-64
         `}
       >
@@ -57,8 +71,8 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           </p>
         </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 space-y-2">
+        {/* Navigation */}
+        <nav className="flex-1 space-y-2">
         {navItems.map((item) => {
           const isActive = pathname === item.path;
           return (
@@ -95,5 +109,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         </div>
       )}
     </aside>
+    </>
   );
 }

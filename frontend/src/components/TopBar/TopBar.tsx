@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAuthStore } from "@/stores/authStore";
 import { useTheme } from "@/components/ThemeProvider";
 import { FaSun, FaMoon, FaBell } from "react-icons/fa";
+import { IconByName } from "@/components/ReactIcon";
 
 const titleMap: Record<string, string> = {
   "/": "Overview",
@@ -12,6 +13,10 @@ const titleMap: Record<string, string> = {
   "/search": "Search Results",
   "/history": "Recent Searches",
 };
+
+interface TopBarProps {
+  onSidebarToggle?: () => void;
+}
 
 export default function TopBar({ onSidebarToggle }: TopBarProps) {
   const pathname = usePathname();
@@ -34,7 +39,7 @@ export default function TopBar({ onSidebarToggle }: TopBarProps) {
           className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center text-app-muted hover:text-app-main hover:bg-app-surface-low dark:hover:bg-app-surface-low transition-colors lg:hidden"
           aria-label="Open sidebar"
         >
-          <MaterialIcon name="menu" className="text-lg sm:text-xl" />
+          <IconByName name="menu" className="text-lg sm:text-xl" />
         </button>
 
         <h2 className="font-semibold text-sm sm:text-base lg:text-lg text-app-main dark:text-app-main">{title}</h2>

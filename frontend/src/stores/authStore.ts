@@ -22,6 +22,7 @@ interface StoredAuth {
 
 interface AuthState {
   isAuthenticated: boolean;
+  isHydrated: boolean;
   isLoginModalOpen: boolean;
   pendingSearchQuery: string | null;
   pendingSearchExecuted: boolean;
@@ -76,44 +77,27 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   userName: null,
   userId: null,
   isLogoutModalOpen: false,
+  isLoginModalOpen: false,
 
-  hydrate: () => {
-    const stored = loadStoredAuth();
-    if (stored) {
-      set({
-        isAuthenticated: true,
-        isHydrated: true,
-        userId: stored.userId,
-        userName: stored.userName,
-        userEmail: stored.userEmail,
-      }
-    : {
-        isAuthenticated: false,
-        userId: null,
-        userName: null,
-        userEmail: null,
-      };
-
-  return {
-    isAuthenticated: initialState.isAuthenticated,
-    isLoginModalOpen: false,
-    pendingSearchQuery: null,
-    pendingSearchExecuted: false,
-    userEmail: initialState.userEmail,
-    userName: initialState.userName,
-    userId: initialState.userId,
-    isLogoutModalOpen: false,
-
-    login: (email) => {
-      set({
-        isAuthenticated: true,
-        userEmail: email,
+  login: (email, tokens) => {
+    if (tokens) {
+      saveAuth({
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+        userId: tokens.userId ?? "",
         userName: email.split("@")[0],
+        userEmail: email,
       });
-    },
+    }
+    set({
+      isAuthenticated: true,
+      userEmail: email,
+      userName: email.split("@")[0],
+    });
+  },
 
-    openLoginModal: () => set({ isLoginModalOpen: true }),
-    closeLoginModal: () => set({ isLoginModalOpen: false }),
+  openLoginModal: () => set({ isLoginModalOpen: true }),
+  closeLoginModal: () => set({ isLoginModalOpen: false }),
 
   logout: () => {
     clearAuth();
@@ -151,24 +135,22 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   openLogoutModal: () => set({ isLogoutModalOpen: true }),
   closeLogoutModal: () => set({ isLogoutModalOpen: false }),
 
-  setPendingSearchQuery: (query) =>
-    set({ pendingSearchQuery: query }),
+  setPendingSearchQuery: (query) => set({ pendingSearchQuery: query }),
 
-  markPendingSearchExecuted: () =>
-    set({ pendingSearchExecuted: true }),
+  markPendingSearchExecuted: () => set({ pendingSearchExecuted: true }),
 
-    resetAuth: () => {
-      clearAuth();
-      set({
-        isAuthenticated: false,
-        isLoginModalOpen: false,
-        pendingSearchQuery: null,
-        pendingSearchExecuted: false,
-        userEmail: null,
-        userName: null,
-        userId: null,
-      });
-    },
+  resetAuth: () => {
+    clearAuth();
+    set({
+      isAuthenticated: false,
+      isLoginModalOpen: false,
+      pendingSearchQuery: null,
+      pendingSearchExecuted: false,
+      userEmail: null,
+      userName: null,
+      userId: null,
+    });
+  },
 
   getAccessToken: () => {
     const stored = loadStoredAuth();
@@ -178,6 +160,27 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   getRefreshToken: () => {
     const stored = loadStoredAuth();
     return stored?.refreshToken ?? null;
+  },
+
+  hydrate: () => {
+    const stored = loadStoredAuth();
+    if (stored) {
+      set({
+        isAuthenticated: true,
+        isHydrated: true,
+        userId: stored.userId,
+        userName: stored.userName,
+        userEmail: stored.userEmail,
+      });
+    } else {
+      set({
+        isAuthenticated: false,
+        isHydrated: true,
+        userId: null,
+        userName: null,
+        userEmail: null,
+      });
+    }
   },
 }));
 
