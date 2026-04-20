@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { authFetch } from "@/stores/authStore";
+import axios from "axios";
+
+const BACKEND_API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000"; //REFERENCE TO .ENV
 
 export type TweetSentiment = "positive" | "neutral" | "negative";
 

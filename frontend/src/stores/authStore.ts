@@ -2,7 +2,7 @@
 
 import { create } from "zustand";
 
-const BACKEND_API = "http://localhost:5000";
+const BACKEND_API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
 
 interface TokenData {
   accessToken: string;
@@ -22,7 +22,7 @@ interface StoredAuth {
 
 interface AuthState {
   isAuthenticated: boolean;
-  isHydrated: boolean;
+  isLoginModalOpen: boolean;
   pendingSearchQuery: string | null;
   pendingSearchExecuted: boolean;
   userEmail: string | null;
@@ -33,6 +33,8 @@ interface AuthState {
   login: (email: string, tokens?: { accessToken: string; refreshToken: string; userId?: string }) => void;
   logout: () => void;
   logoutAsync: () => Promise<void>;
+  openLoginModal: () => void;
+  closeLoginModal: () => void;
   openLogoutModal: () => void;
   closeLogoutModal: () => void;
   setPendingSearchQuery: (query: string | null) => void;
@@ -84,28 +86,34 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         userId: stored.userId,
         userName: stored.userName,
         userEmail: stored.userEmail,
-      });
-    } else {
-      set({ isHydrated: true });
-    }
-  },
+      }
+    : {
+        isAuthenticated: false,
+        userId: null,
+        userName: null,
+        userEmail: null,
+      };
 
-  login: (email: string, tokens?: { accessToken: string; refreshToken: string; userId?: string }) => {
-    if (tokens) {
-      saveAuth({
-        accessToken: tokens.accessToken,
-        refreshToken: tokens.refreshToken,
-        userId: tokens.userId ?? "",
+  return {
+    isAuthenticated: initialState.isAuthenticated,
+    isLoginModalOpen: false,
+    pendingSearchQuery: null,
+    pendingSearchExecuted: false,
+    userEmail: initialState.userEmail,
+    userName: initialState.userName,
+    userId: initialState.userId,
+    isLogoutModalOpen: false,
+
+    login: (email) => {
+      set({
+        isAuthenticated: true,
         userEmail: email,
         userName: email.split("@")[0],
       });
-    }
-    set({
-      isAuthenticated: true,
-      userEmail: email,
-      userName: email.split("@")[0],
-    });
-  },
+    },
+
+    openLoginModal: () => set({ isLoginModalOpen: true }),
+    closeLoginModal: () => set({ isLoginModalOpen: false }),
 
   logout: () => {
     clearAuth();
@@ -149,17 +157,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   markPendingSearchExecuted: () =>
     set({ pendingSearchExecuted: true }),
 
-  resetAuth: () => {
-    clearAuth();
-    set({
-      isAuthenticated: false,
-      pendingSearchQuery: null,
-      pendingSearchExecuted: false,
-      userEmail: null,
-      userName: null,
-      userId: null,
-    });
-  },
+    resetAuth: () => {
+      clearAuth();
+      set({
+        isAuthenticated: false,
+        isLoginModalOpen: false,
+        pendingSearchQuery: null,
+        pendingSearchExecuted: false,
+        userEmail: null,
+        userName: null,
+        userId: null,
+      });
+    },
 
   getAccessToken: () => {
     const stored = loadStoredAuth();

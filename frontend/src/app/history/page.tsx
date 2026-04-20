@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/stores/authStore";
 import Sidebar, { SidebarToggle } from "@/components/Sidebar";
 import TopBar from "@/components/TopBar";
-import MaterialIcon from "@/components/MaterialIcon";
+import { IconByName } from "@/components/ReactIcon";
+import { FaSearch, FaDownload, FaExclamationCircle, FaHistory, FaEye, FaSyncAlt, FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import PageLayout from "@/components/PageLayout";
 import {
   useSentimentHistory,
@@ -149,12 +150,9 @@ export default function HistoryPage() {
               {/* Search History Table */}
               <section className="bg-app-bg dark:bg-app-surface-low rounded-xl sm:rounded-2xl border border-app-border-strong dark:border-app-border-strong shadow-sm overflow-hidden flex-1">
                 {/* Table header controls */}
-                <div className="flex items-center gap-2 sm:gap-3 px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100 dark:border-app-border-strong flex-wrap">
-                  <div className="relative flex-1 min-w-[120px] sm:min-w-[200px] max-w-xs sm:max-w-72">
-                    <MaterialIcon
-                      name="search"
-                      className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-app-muted text-base sm:text-lg"
-                    />
+                <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-100 dark:border-app-border-strong">
+                  <div className="relative w-72">
+                    <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-app-muted text-lg" />
                     <input
                       type="text"
                       placeholder="Cari riwayat..."
@@ -163,9 +161,9 @@ export default function HistoryPage() {
                       className="w-full h-8 sm:h-9 pl-8 sm:pl-9 pr-3 sm:pr-4 rounded-lg bg-app-surface-low dark:bg-app-surface-low border border-app-border-strong dark:border-app-border-strong text-app-main dark:text-app-main placeholder:text-app-muted dark:placeholder:text-app-muted focus:outline-none focus:ring-2 focus:ring-app-primary/20 dark:focus:ring-app-primary/20 text-xs sm:text-sm"
                     />
                   </div>
-                  <button className="flex items-center gap-1 h-8 sm:h-9 px-2 sm:px-3 rounded-lg bg-app-bg dark:bg-app-surface-low border border-app-border-strong dark:border-app-border-strong text-app-main dark:text-app-main hover:bg-app-surface-low dark:hover:bg-app-surface-low transition-colors text-[10px] sm:text-sm">
-                    <MaterialIcon name="download" className="text-base sm:text-lg" />
-                    <span className="hidden sm:inline">Export CSV</span>
+                  <button className="flex items-center gap-1.5 h-9 px-3 rounded-lg bg-app-bg dark:bg-app-surface-low border border-app-border-strong dark:border-app-border-strong text-app-main dark:text-app-main hover:bg-app-surface-low dark:hover:bg-app-surface-low transition-colors text-sm">
+                    <FaDownload className="text-base" />
+                    Export CSV
                   </button>
                 </div>
 
@@ -179,9 +177,9 @@ export default function HistoryPage() {
                       </div>
                     </div>
                   ) : error ? (
-                    <div className="flex flex-col items-center justify-center py-8 sm:py-16 gap-4">
-                      <MaterialIcon name="error_outline" className="text-3xl sm:text-4xl text-red-500" />
-                      <p className="text-xs sm:text-sm text-app-muted dark:text-app-muted">{error}</p>
+                    <div className="flex flex-col items-center justify-center py-16 gap-4">
+                      <FaExclamationCircle className="text-4xl text-red-500" />
+                      <p className="text-sm text-app-muted dark:text-app-muted">{error}</p>
                       <button
                         onClick={() => void fetchHistory(page)}
                         className="px-4 py-2 bg-app-primary text-white text-xs sm:text-sm font-bold rounded-lg hover:opacity-90"
@@ -190,9 +188,9 @@ export default function HistoryPage() {
                       </button>
                     </div>
                   ) : items.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-8 sm:py-16 gap-3">
-                      <MaterialIcon name="history" className="text-3xl sm:text-5xl text-app-muted dark:text-app-muted opacity-40" />
-                      <p className="text-xs sm:text-sm text-app-muted dark:text-app-muted">
+                    <div className="flex flex-col items-center justify-center py-16 gap-3">
+                      <FaHistory className="text-5xl text-app-muted dark:text-app-muted opacity-40" />
+                      <p className="text-sm text-app-muted dark:text-app-muted">
                         {filter ? "Tidak ada hasil untuk filter tersebut." : "Belum ada riwayat analisis."}
                       </p>
                       {!filter && (
@@ -259,14 +257,14 @@ export default function HistoryPage() {
                                     className="p-1 sm:p-1.5 rounded-md text-app-muted dark:text-app-muted hover:text-app-primary dark:hover:text-app-primary hover:bg-app-surface-low dark:hover:bg-app-surface-low transition-colors"
                                     title="Lihat"
                                   >
-                                    <MaterialIcon name="visibility" className="text-sm sm:text-base" />
+                                    <FaEye className="text-base" />
                                   </button>
                                   <button
                                     onClick={() => router.push(`/search?q=${encodeURIComponent(item.query)}`)}
                                     className="p-1 sm:p-1.5 rounded-md text-app-muted dark:text-app-muted hover:text-app-primary dark:hover:text-app-primary hover:bg-app-surface-low dark:hover:bg-app-surface-low transition-colors"
                                     title="Analisis Ulang"
                                   >
-                                    <MaterialIcon name="refresh" className="text-sm sm:text-base" />
+                                    <FaSyncAlt className="text-base" />
                                   </button>
                                 </div>
                               </td>
@@ -293,7 +291,7 @@ export default function HistoryPage() {
                         disabled={page <= 1}
                         className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-md border border-app-border-strong dark:border-app-border-strong text-app-muted dark:text-app-muted hover:bg-app-primary hover:text-app-surface dark:hover:bg-app-primary transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                       >
-                        <MaterialIcon name="chevron_left" className="text-sm sm:text-base" />
+                        <FaChevronLeft className="text-base" />
                       </button>
                       {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
                         let pageNum: number;
@@ -327,7 +325,7 @@ export default function HistoryPage() {
                         disabled={page >= totalPages}
                         className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-md border border-app-border-strong dark:border-app-border-strong text-app-muted dark:text-app-muted hover:bg-app-primary hover:text-app-surface dark:hover:bg-app-primary transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                       >
-                        <MaterialIcon name="chevron_right" className="text-sm sm:text-base" />
+                        <FaChevronRight className="text-base" />
                       </button>
                     </div>
                   </div>

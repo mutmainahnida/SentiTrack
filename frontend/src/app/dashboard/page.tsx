@@ -5,8 +5,16 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthStore } from "@/stores/authStore";
 import Sidebar, { SidebarToggle } from "@/components/Sidebar";
 import TopBar from "@/components/TopBar";
-import MaterialIcon from "@/components/MaterialIcon";
+import { IconByName } from "@/components/ReactIcon";
+import { FaSearch, FaChartLine, FaArrowRight, FaChartBar } from "react-icons/fa";
+import { FiTrendingUp, FiRotateCw } from "react-icons/fi";
+import { motion, AnimatePresence, type Variants } from "framer-motion";
 import PageLayout from "@/components/PageLayout";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   useSentimentHistory,
   computeOverallScore,
@@ -35,56 +43,98 @@ function SentimentBarChart({ items }: { items: HistoryItem[] }) {
     <div className="mt-4 space-y-6">
       {/* Overall score + stacked bar */}
       <div>
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-[10px] sm:text-xs font-bold text-app-muted dark:text-app-muted uppercase tracking-wide">
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-xs font-bold text-app-muted uppercase tracking-wider">
             Skor Keseluruhan
           </span>
-          <span className="text-base sm:text-lg font-black text-app-main dark:text-app-main">
+          <motion.span
+            key={overallScore}
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="text-2xl font-black text-app-main"
+          >
             {items.length > 0 ? overallScore : "—"}
             {items.length > 0 && (
-              <span className="text-xs sm:text-sm font-normal text-app-muted">/100</span>
+              <span className="text-sm font-normal text-app-muted ml-1">/100</span>
             )}
-          </span>
+          </motion.span>
         </div>
         {/* Stacked bar */}
-        <div className="h-4 sm:h-5 rounded-full overflow-hidden flex">
-          <div
-            className="bg-emerald-500 transition-all"
-            style={{ width: `${pos}%` }}
-            title={`Positive: ${pos}%`}
+        <div className="h-5 rounded-full overflow-hidden flex">
+          <motion.div
+            className="bg-emerald-500"
+            initial={{ width: 0 }}
+            animate={{ width: `${pos}%` }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
           />
-          <div
-            className="bg-yellow-400 transition-all"
-            style={{ width: `${neu}%` }}
-            title={`Neutral: ${neu}%`}
+          <motion.div
+            className="bg-yellow-400"
+            initial={{ width: 0 }}
+            animate={{ width: `${neu}%` }}
+            transition={{ duration: 0.8, ease: "easeOut", delay: 0.1 }}
           />
-          <div
-            className="bg-red-400 transition-all"
-            style={{ width: `${neg}%` }}
-            title={`Negative: ${neg}%`}
+          <motion.div
+            className="bg-red-400"
+            initial={{ width: 0 }}
+            animate={{ width: `${neg}%` }}
+            transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
           />
         </div>
         {/* Legend */}
-        <div className="flex gap-3 sm:gap-4 mt-2">
-          {sentimentBars.map((b) => (
-            <div key={b.key} className="flex items-center gap-1 sm:gap-1.5">
-              <div
-                className={`w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full ${b.bg}`}
-              />
-              <span className="text-[10px] sm:text-xs text-app-muted dark:text-app-muted">
-                {b.label} <strong className="text-app-main dark:text-app-main">{b.key === "positive" ? pos : b.key === "neutral" ? neu : neg}%</strong>
-              </span>
-            </div>
-          ))}
+        <div className="flex gap-4 mt-3">
+          {sentimentBars.map((b, i) => {
+            const val = b.key === "positive" ? pos : b.key === "neutral" ? neu : neg;
+            return (
+              <motion.div
+                key={b.key}
+                className="flex items-center gap-1.5"
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.3 + i * 0.1 }}
+              >
+                <div className={`w-2.5 h-2.5 rounded-full ${b.bg}`} />
+                <span className="text-xs text-app-muted">
+                  {b.label} <strong className="text-app-main">{val}%</strong>
+                </span>
+              </motion.div>
+            );
+          })}
         </div>
       </div>
 
       {items.length > 1 && (
-        <p className="text-[10px] sm:text-xs text-app-muted dark:text-app-muted mt-3">
+        <p className="text-xs text-app-muted">
           Rata-rata dari {items.length} analisis
         </p>
       )}
     </div>
+  );
+}
+
+function StatCard({ icon, label, value, delay = 0 }: { icon: React.ReactNode; label: string; value: React.ReactNode; delay?: number }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay, duration: 0.4 }}
+    >
+      <Card className="group bg-white/80 dark:bg-app-surface/80 backdrop-blur-sm border-app-border hover:border-app-primary/50 transition-all duration-300 hover:shadow-lg">
+        <CardContent className="p-6">
+          <div className="flex items-start justify-between mb-4">
+            <motion.div
+              className="w-12 h-12 rounded-xl bg-gradient-to-br from-app-primary/20 to-blue-400/20 flex items-center justify-center text-app-primary"
+              whileHover={{ scale: 1.1, rotate: 5 }}
+            >
+              {icon}
+            </motion.div>
+          </div>
+          <div className="text-3xl font-black text-app-main tracking-tight mb-1">
+            {value}
+          </div>
+          <p className="text-sm text-app-muted font-medium">{label}</p>
+        </CardContent>
+      </Card>
+    </motion.div>
   );
 }
 
@@ -169,15 +219,22 @@ function DashboardContent() {
     return `${day}d lalu`;
   }
 
+  const containerVariants: Variants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.08 }
+    }
+  };
+
+  const itemVariants: Variants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.4 } }
+  };
+
   return (
-    <div className="flex h-screen overflow-hidden bg-app-bg dark:bg-app-bg">
-      {/* Mobile sidebar toggle */}
-      <SidebarToggle onClick={() => setSidebarOpen(true)} />
-
-      {/* Sidebar (responsive) */}
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-
-      {/* Main content — margin adjusts per breakpoint */}
+    <div className="flex h-screen overflow-hidden bg-gradient-to-br from-app-bg to-app-surface-low/50 dark:from-app-bg dark:to-app-surface/50">
+      <Sidebar />
       <PageLayout>
         <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0 lg:pl-16 xl:pl-64">
           <TopBar onSidebarToggle={() => setSidebarOpen(true)} />
@@ -185,276 +242,251 @@ function DashboardContent() {
             <div className="flex-1 px-4 sm:px-6 lg:px-8 py-6 sm:py-8 max-w-7xl mx-auto w-full">
 
               {/* Hero Section */}
-              <section className="bg-app-bg dark:bg-app-surface-low rounded-xl sm:rounded-2xl p-6 sm:p-10 lg:p-16 text-center mb-6 sm:mb-10 lg:mb-12 border border-app-border-strong dark:border-app-border-strong">
-                <div className="inline-flex px-2 sm:px-3 py-1 sm:py-1.5 rounded-full bg-app-surface-low dark:bg-app-surface-low text-app-primary dark:text-app-primary text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-4 sm:mb-6">
+              <motion.section
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-gradient-to-br from-white/90 to-blue-50/50 dark:from-app-surface/90 dark:to-app-primary/5 rounded-2xl p-10 text-center mb-8 backdrop-blur-sm border border-app-border shadow-lg shadow-app-primary/5"
+              >
+                <motion.div
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ delay: 0.2 }}
+                  className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-app-primary/10 text-app-primary text-xs font-bold uppercase tracking-wider mb-6"
+                >
+                  <FiTrendingUp className="h-3 w-3" />
                   AI-Powered Insights
-                </div>
-                <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black tracking-tighter leading-tight text-app-main dark:text-app-main mb-4 sm:mb-6">
+                </motion.div>
+                <motion.h1
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                  className="text-4xl font-black tracking-tight text-app-main mb-4"
+                >
                   Analisis Sentimen Twitter
                   <br />
-                  <span className="text-app-primary dark:text-app-primary">kurang dari 1 menit</span>
-                </h1>
-                <p className="text-xs sm:text-sm md:text-base lg:text-lg text-app-muted dark:text-app-muted max-w-xl lg:max-w-2xl mx-auto mb-6 sm:mb-8 lg:mb-10 leading-relaxed px-2">
-                  Dapatkan pemahaman mendalam tentang sentimen publik terhadap topik, brand, atau akun Twitter dalam hitungan detik dengan analisis bertenaga AI.
-                </p>
-                <div className="relative max-w-xl lg:max-w-3xl mx-auto px-2 sm:px-0">
-                  <div className="flex flex-col sm:flex-row p-1.5 sm:p-2 bg-app-surface-low dark:bg-app-surface-low rounded-lg sm:rounded-xl border-2 border-app-border-strong dark:border-app-border-strong focus-within:border-app-primary dark:focus-within:border-app-primary transition-colors gap-1 sm:gap-0">
-                    <div className="flex items-center px-2 sm:px-3">
-                      <MaterialIcon name="search" className="text-lg sm:text-xl text-app-muted dark:text-app-muted flex-shrink-0" />
+                  <span className="bg-gradient-to-r from-app-primary to-blue-500 bg-clip-text text-transparent">kurang dari 1 menit</span>
+                </motion.h1>
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.4 }}
+                  className="text-app-muted text-lg max-w-2xl mx-auto mb-8"
+                >
+                  Dapatkan pemahaman mendalam tentang sentimen publik terhadap topik, brand, atau akun Twitter dalam hitungan detik.
+                </motion.p>
+
+                {/* Search bar */}
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.5 }}
+                  className="max-w-xl mx-auto"
+                >
+                  <Card className="p-1.5 bg-white dark:bg-app-surface border-app-border shadow-xl">
+                    <div className="flex flex-col sm:flex-row items-stretch gap-2">
+                      <div className="flex items-center px-4 flex-1 gap-3">
+                        <FaSearch className="text-app-muted" />
+                        <Input
+                          type="text"
+                          placeholder="Cari topik, brand, atau akun Twitter..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
+                          className="border-0 bg-transparent shadow-none focus-visible:ring-0"
+                        />
+                      </div>
+                      <Button onClick={handleSearch} className="gap-2">
+                        Analisis <FaArrowRight className="h-4 w-4" />
+                      </Button>
                     </div>
-                    <input
-                      type="text"
-                      placeholder="Cari topik, brand, atau akun Twitter..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") handleSearch();
-                      }}
-                      className="flex-1 bg-transparent text-app-main dark:text-app-main text-sm sm:text-base py-2 sm:py-3 focus:outline-none placeholder:text-app-muted/60 dark:placeholder:text-app-muted/60"
-                    />
-                    <button
-                      onClick={handleSearch}
-                      className="bg-app-primary dark:bg-app-primary hover:bg-app-primary dark:hover:bg-app-primary text-white px-4 sm:px-6 lg:px-8 py-2 sm:py-3 rounded-lg sm:rounded-lg font-bold text-xs sm:text-sm transition-colors whitespace-nowrap"
-                    >
-                      Analisis
-                    </button>
-                  </div>
-                </div>
-              </section>
+                  </Card>
+                </motion.div>
+              </motion.section>
 
               {/* Stats Grid */}
-              <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-10 lg:mb-12">
-                {/* Total Analyses */}
-                <div className="bg-app-bg dark:bg-app-surface-low rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-app-border-strong dark:border-app-border-strong group hover:border-app-primary/50 dark:hover:border-app-primary/50 transition-colors">
-                  <div className="flex items-start justify-between mb-3 sm:mb-4">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-app-surface-low dark:bg-app-surface-low flex items-center justify-center">
-                      <MaterialIcon name="monitoring" className="text-lg sm:text-xl text-app-primary dark:text-app-primary" />
-                    </div>
-                  </div>
-                  {statsLoading ? (
-                    <div className="h-7 sm:h-8 w-20 sm:w-24 bg-app-surface-low dark:bg-app-surface-low rounded animate-pulse mb-1" />
-                  ) : statsError ? (
-                    <p className="text-2xl sm:text-3xl font-black text-app-main dark:text-app-main tracking-tight mb-1">—</p>
-                  ) : (
-                    <p className="text-2xl sm:text-3xl font-black text-app-main dark:text-app-main tracking-tight mb-1">
-                      {total.toLocaleString()}
-                    </p>
-                  )}
-                  <p className="text-xs sm:text-sm text-app-muted dark:text-app-muted font-medium">Total Analisis</p>
-                </div>
-
-                {/* Average Score */}
-                <div className="bg-app-bg dark:bg-app-surface-low rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-app-border-strong dark:border-app-border-strong group hover:border-app-primary/50 dark:hover:border-app-primary/50 transition-colors">
-                  <div className="flex items-start justify-between mb-3 sm:mb-4">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-app-surface-low dark:bg-app-surface-low flex items-center justify-center">
-                      <MaterialIcon name="verified" className="text-lg sm:text-xl text-app-primary dark:text-app-primary" />
-                    </div>
-                    <span className="px-2 py-1 rounded-full bg-app-surface-low dark:bg-app-surface-low text-app-muted dark:text-app-muted text-[10px] sm:text-xs font-bold">
-                      Rata-rata
-                    </span>
-                  </div>
-                  {statsLoading ? (
-                    <div className="h-7 sm:h-8 w-14 sm:w-16 bg-app-surface-low dark:bg-app-surface-low rounded animate-pulse mb-1" />
-                  ) : (
-                    <p className="text-2xl sm:text-3xl font-black text-app-main dark:text-app-main tracking-tight mb-1">
-                      {avgScore > 0 ? avgScore : "—"}{avgScore > 0 && <span className="text-base sm:text-lg font-normal text-app-muted">/100</span>}
-                    </p>
-                  )}
-                  <p className="text-xs sm:text-sm text-app-muted dark:text-app-muted font-medium">Avg. Overall Score</p>
-                </div>
-
-                {/* Last Analysis */}
-                <div className="bg-app-bg dark:bg-app-surface-low rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-app-border-strong dark:border-app-border-strong group hover:border-app-primary/50 dark:hover:border-app-primary/50 transition-colors sm:col-span-2 lg:col-span-1">
-                  <div className="flex items-start justify-between mb-3 sm:mb-4">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-app-surface-low dark:bg-app-surface-low flex items-center justify-center">
-                      <MaterialIcon name="history" className="text-lg sm:text-xl text-app-primary dark:text-app-primary" />
-                    </div>
-                  </div>
-                  {statsLoading ? (
-                    <>
-                      <div className="h-5 sm:h-6 w-28 sm:w-32 bg-app-surface-low dark:bg-app-surface-low rounded animate-pulse mb-1" />
-                      <div className="h-3 sm:h-4 w-20 sm:w-24 bg-app-surface-low dark:bg-app-surface-low rounded animate-pulse mt-1" />
-                    </>
-                  ) : lastAnalysis ? (
-                    <>
-                      <p className="text-base sm:text-lg font-black text-app-main dark:text-app-main tracking-tight mb-1 truncate">
-                        {lastAnalysis.query}
-                      </p>
-                      <p className="text-xs sm:text-sm text-app-muted dark:text-app-muted mb-2 sm:mb-3">
-                        {timeAgo(lastAnalysis.createdAt)}
-                      </p>
-                      <div className="flex items-center gap-2">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-black bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/50">
-                          {computeOverallScore(lastAnalysis.positivePct, lastAnalysis.negativePct, lastAnalysis.neutralPct)}
-                        </span>
-                        <div className="flex gap-1">
-                          <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-500" />
-                          <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-yellow-400" />
-                          <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-red-400" />
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <p className="text-2xl sm:text-3xl font-black text-app-main dark:text-app-main tracking-tight mb-1">—</p>
-                      <p className="text-xs sm:text-sm text-app-muted dark:text-app-muted font-medium">Belum ada analisis</p>
-                    </>
-                  )}
-                  <p className="text-xs sm:text-sm text-app-muted dark:text-app-muted font-medium mt-2">Analisis Terakhir</p>
-                </div>
-              </section>
+              <motion.section
+                className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8"
+                variants={containerVariants}
+                initial="hidden"
+                animate="visible"
+              >
+                <StatCard
+                  icon={<FaChartBar className="h-5 w-5" />}
+                  label="Total Analisis"
+                  value={statsLoading ? <Skeleton className="h-8 w-20" /> : total.toLocaleString()}
+                  delay={0.1}
+                />
+                <StatCard
+                  icon={<FiTrendingUp className="h-5 w-5" />}
+                  label="Avg. Overall Score"
+                  value={avgScore > 0 ? avgScore : "—"}
+                  delay={0.2}
+                />
+                <StatCard
+                  icon={<FiRotateCw className="h-5 w-5" />}
+                  label="Analisis Terakhir"
+                  value={lastAnalysis ? (
+                    <span className="text-lg truncate">{lastAnalysis.query}</span>
+                  ) : "—"}
+                  delay={0.3}
+                />
+              </motion.section>
 
               {/* Bento Section */}
-              <section className="grid grid-cols-1 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-10 lg:mb-12">
-                {/* Left: Sentiment Overview */}
-                <div className="bg-app-surface-low dark:bg-app-surface-low rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 border border-app-border-strong dark:border-app-border-strong">
-                  <div className="flex items-start justify-between mb-3 sm:mb-4 gap-2">
-                    <div>
-                      <h2 className="text-base sm:text-lg lg:text-xl font-black text-app-main dark:text-app-main tracking-tight mb-1">
-                        Ringkasan Sentimen
-                      </h2>
-                      <p className="text-[10px] sm:text-sm text-app-muted dark:text-app-muted">
+              <section className="grid grid-cols-12 gap-6 mb-8">
+                {/* Sentiment Overview */}
+                <motion.div
+                  className="col-span-12"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.4 }}
+                >
+                  <Card className="bg-white/80 dark:bg-app-surface/80 backdrop-blur-sm border-app-border">
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-lg font-bold">Ringkasan Sentimen</CardTitle>
+                        {items.length > 0 && (
+                          <Badge variant="secondary">{items.length} Analisis</Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-app-muted">
                         Distribusi rata-rata sentimen dari seluruh analisis Anda.
                       </p>
-                    </div>
-                    {items.length > 0 && (
-                      <span className="px-2 py-1 rounded-full bg-app-primary/10 dark:bg-app-primary/10 text-app-primary dark:text-app-primary text-[10px] sm:text-xs font-bold whitespace-nowrap">
-                        {items.length} Analisis
-                      </span>
-                    )}
-                  </div>
-                  {statsLoading ? (
-                    <div className="flex items-end gap-3 h-28 sm:h-40 mt-4">
-                      {[60, 30, 10].map((h, i) => (
-                        <div key={i} className="flex-1 bg-app-surface-low dark:bg-app-surface-low rounded-t-lg animate-pulse" style={{ height: `${h}%` }} />
-                      ))}
-                    </div>
-                  ) : items.length > 0 ? (
-                    <SentimentBarChart items={items} />
-                  ) : (
-                    <div className="flex flex-col items-center justify-center h-28 sm:h-40 mt-4 gap-2">
-                      <MaterialIcon name="insights" className="text-3xl sm:text-4xl text-app-muted dark:text-app-muted opacity-40" />
-                      <p className="text-[10px] sm:text-sm text-app-muted dark:text-app-muted">Belum ada data. Mulai analisis pertama.</p>
-                    </div>
-                  )}
-                </div>
+                    </CardHeader>
+                    <CardContent>
+                      {statsLoading ? (
+                        <div className="space-y-4">
+                          <Skeleton className="h-8 w-full" />
+                          <Skeleton className="h-4 w-48" />
+                        </div>
+                      ) : items.length > 0 ? (
+                        <SentimentBarChart items={items} />
+                      ) : (
+                        <motion.div
+                          className="flex flex-col items-center justify-center py-12 gap-3"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                        >
+                          <FaChartLine className="h-12 w-12 text-app-muted/40" />
+                          <p className="text-app-muted">Belum ada data. Mulai analisis pertama.</p>
+                        </motion.div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </motion.div>
               </section>
 
               {/* Recent Analytics Table */}
-              <section className="mt-6 sm:mt-10 lg:mt-12">
-                <div className="flex items-center justify-between mb-3 sm:mb-4 gap-2">
-                  <h2 className="text-base sm:text-lg font-black text-app-main dark:text-app-main tracking-tight">Analisis Terbaru</h2>
-                  <button
-                    onClick={() => router.push("/history")}
-                    className="text-[10px] sm:text-xs font-bold text-app-muted dark:text-app-muted hover:text-app-primary dark:hover:text-app-primary transition-colors whitespace-nowrap"
-                  >
-                    Lihat Semua Riwayat
-                  </button>
-                </div>
-
-                <div className="bg-app-bg dark:bg-app-surface-low rounded-xl sm:rounded-2xl border border-app-border-strong dark:border-app-border-strong overflow-hidden">
-                  {statsLoading ? (
-                    <div className="flex items-center justify-center py-8 sm:py-12">
-                      <div className="flex flex-col items-center gap-3">
-                        <div className="w-6 h-6 sm:w-8 sm:h-8 border-2 border-app-primary border-t-transparent rounded-full animate-spin" />
-                        <p className="text-xs sm:text-sm text-app-muted dark:text-app-muted">Memuat...</p>
-                      </div>
+              <motion.section
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+              >
+                <Card className="bg-white/80 dark:bg-app-surface/80 backdrop-blur-sm border-app-border overflow-hidden">
+                  <CardHeader className="border-b border-app-border/50 bg-app-surface-low/50">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg font-bold">Analisis Terbaru</CardTitle>
+                      <Button variant="ghost" size="sm" className="text-app-muted">
+                        Lihat Semua Riwayat
+                      </Button>
                     </div>
-                  ) : recentItems.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-8 sm:py-12 gap-3">
-                      <MaterialIcon name="history" className="text-3xl sm:text-4xl text-app-muted dark:text-app-muted opacity-40" />
-                      <p className="text-xs sm:text-sm text-app-muted dark:text-app-muted">Belum ada analisis. Mulai dari dashboard.</p>
-                      <button
-                        onClick={handleSearch}
-                        className="mt-1 px-4 py-2 bg-app-primary text-white text-xs sm:text-sm font-bold rounded-lg hover:opacity-90"
+                  </CardHeader>
+
+                  <AnimatePresence mode="wait">
+                    {statsLoading ? (
+                      <CardContent className="p-6 space-y-4">
+                        {[1, 2, 3].map((i) => (
+                          <Skeleton key={i} className="h-16 w-full" />
+                        ))}
+                      </CardContent>
+                    ) : recentItems.length === 0 ? (
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="flex flex-col items-center justify-center py-16 gap-4"
                       >
-                        Mulai Analisis
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full min-w-[400px]">
-                        <thead>
-                          <tr className="bg-app-surface-low/50 dark:bg-app-surface-low border-b border-app-border-strong dark:border-app-border-strong/20">
-                            <th className="text-start px-3 sm:px-6 py-2 sm:py-3 text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-app-muted dark:text-app-muted">Keyword</th>
-                            <th className="text-start px-3 sm:px-6 py-2 sm:py-3 text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-app-muted dark:text-app-muted hidden sm:table-cell">Sentimen</th>
-                            <th className="text-start px-3 sm:px-6 py-2 sm:py-3 text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-app-muted dark:text-app-muted hidden md:table-cell">Volume</th>
-                            <th className="text-start px-3 sm:px-6 py-2 sm:py-3 text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-app-muted dark:text-app-muted">Skor</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {recentItems.map((item, idx) => {
-                            const score = computeOverallScore(
-                              item.positivePct,
-                              item.negativePct,
-                              item.neutralPct,
-                            );
-                            const primary =
-                              item.positivePct >= item.negativePct &&
-                              item.positivePct >= item.neutralPct
-                                ? { label: `Positive (${item.positivePct}%)`, color: "#22c55e" }
-                                : item.neutralPct >= item.negativePct
-                                ? { label: `Neutral (${item.neutralPct}%)`, color: "#eab308" }
-                                : { label: `Negative (${item.negativePct}%)`, color: "#f87171" };
+                        <FiRotateCw className="h-12 w-12 text-app-muted/40" />
+                        <p className="text-app-muted">Belum ada analisis. Mulai dari dashboard.</p>
+                        <Button onClick={handleSearch} size="sm">Mulai Analisis</Button>
+                      </motion.div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="bg-app-surface-low/50 border-b border-app-border/50">
+                              <th className="text-left px-6 py-4 text-xs font-bold text-app-muted uppercase tracking-wider">Keyword</th>
+                              <th className="text-left px-6 py-4 text-xs font-bold text-app-muted uppercase tracking-wider">Sentimen Utama</th>
+                              <th className="text-left px-6 py-4 text-xs font-bold text-app-muted uppercase tracking-wider">Volume</th>
+                              <th className="text-left px-6 py-4 text-xs font-bold text-app-muted uppercase tracking-wider">Skor</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <AnimatePresence>
+                              {recentItems.map((item, idx) => {
+                                const score = computeOverallScore(
+                                  item.positivePct,
+                                  item.negativePct,
+                                  item.neutralPct,
+                                );
+                                const primary =
+                                  item.positivePct >= item.negativePct &&
+                                  item.positivePct >= item.neutralPct
+                                    ? { label: `Positive (${item.positivePct}%)`, color: "#22c55e" }
+                                    : item.neutralPct >= item.negativePct
+                                    ? { label: `Neutral (${item.neutralPct}%)`, color: "#eab308" }
+                                    : { label: `Negative (${item.negativePct}%)`, color: "#f87171" };
 
-                            return (
-                              <tr
-                                key={item.jobId}
-                                className={`hover:bg-app-surface-low dark:hover:bg-app-surface-low transition-colors ${
-                                  idx < recentItems.length - 1
-                                    ? "border-b border-slate-100 dark:border-app-border-strong/20"
-                                    : ""
-                                }`}
-                              >
-                                <td className="px-3 sm:px-6 py-3 sm:py-4">
-                                  <button
-                                    onClick={() =>
-                                      router.push(
-                                        `/search?q=${encodeURIComponent(item.query)}`,
-                                      )
-                                    }
-                                    className="font-bold text-app-main dark:text-app-main hover:text-app-primary dark:hover:text-app-primary transition-colors text-left text-xs sm:text-sm truncate max-w-[120px] sm:max-w-none"
+                                return (
+                                  <motion.tr
+                                    key={item.jobId}
+                                    initial={{ opacity: 0, x: -20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: 20 }}
+                                    transition={{ delay: idx * 0.05 }}
+                                    className="border-b border-app-border/30 hover:bg-app-surface-low/50 transition-colors"
                                   >
-                                    {item.query}
-                                  </button>
-                                </td>
-                                <td className="px-3 sm:px-6 py-3 sm:py-4 hidden sm:table-cell">
-                                  <div className="flex items-center gap-1.5 sm:gap-2">
-                                    <span
-                                      className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full flex-shrink-0"
-                                      style={{ backgroundColor: primary.color }}
-                                    />
-                                    <span className="text-xs sm:text-sm font-medium text-app-main dark:text-app-main whitespace-nowrap">
-                                      {primary.label}
-                                    </span>
-                                  </div>
-                                </td>
-                                <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-app-muted dark:text-app-muted font-medium hidden md:table-cell">
-                                  {item.total.toLocaleString()} tweets
-                                </td>
-                                <td className="px-3 sm:px-6 py-3 sm:py-4">
-                                  <span
-                                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-black border whitespace-nowrap ${
-                                      score >= 70
-                                        ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/50"
-                                        : score >= 40
-                                        ? "bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-900/50"
-                                        : "bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-900/50"
-                                    }`}
-                                  >
-                                    {score}
-                                  </span>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-              </section>
-
+                                    <td className="px-6 py-4">
+                                      <Button
+                                        variant="link"
+                                        className="text-app-main font-bold p-0 h-auto"
+                                        onClick={() => router.push(`/search?q=${encodeURIComponent(item.query)}`)}
+                                      >
+                                        {item.query}
+                                      </Button>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                      <div className="flex items-center gap-2">
+                                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: primary.color }} />
+                                        <span className="text-sm font-medium text-app-main">{primary.label}</span>
+                                      </div>
+                                    </td>
+                                    <td className="px-6 py-4 text-sm text-app-muted font-medium">
+                                      {item.total.toLocaleString()} tweets
+                                    </td>
+                                    <td className="px-6 py-4">
+                                      <Badge
+                                        className={
+                                          score >= 70
+                                            ? "bg-emerald-100 text-emerald-700 border-emerald-200"
+                                            : score >= 40
+                                            ? "bg-blue-100 text-blue-700 border-blue-200"
+                                            : "bg-red-100 text-red-700 border-red-200"
+                                        }
+                                      >
+                                        {score}
+                                      </Badge>
+                                    </td>
+                                  </motion.tr>
+                                );
+                              })}
+                            </AnimatePresence>
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </AnimatePresence>
+                </Card>
+              </motion.section>
             </div>
           </div>
         </div>
@@ -480,7 +512,15 @@ export default function DashboardPage() {
   if (!isHydrated || !isAuthenticated) return null;
 
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={
+      <div className="flex items-center justify-center h-screen">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          className="w-8 h-8 border-4 border-app-primary border-t-transparent rounded-full"
+        />
+      </div>
+    }>
       <DashboardContent />
     </Suspense>
   );
