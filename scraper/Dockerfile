@@ -4,9 +4,8 @@ FROM node:20-alpine AS deps
 
 WORKDIR /app
 
-# Upgrade and install latest CA certs + SSL libs for TLS connectivity
-RUN apk upgrade --no-cache && \
-    apk add --no-cache \
+# Install packages (no upgrade to avoid network issues with package index)
+RUN apk add --no-cache \
         chromium \
         chromium-chromedriver \
         nss \
@@ -15,7 +14,6 @@ RUN apk upgrade --no-cache && \
         harfbuzz \
         harfbuzz-dev \
         ca-certificates \
-        ca-certificates-bundle \
         ttf-freefont \
         fontconfig \
         fontconfig-dev \
@@ -28,12 +26,7 @@ RUN apk upgrade --no-cache && \
         gcompat \
         libc6-compat \
         curl \
-        openssl \
-        busybox \
         wget
-
-# Update CA certificates store
-RUN update-ca-certificates 2>/dev/null || true
 
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
