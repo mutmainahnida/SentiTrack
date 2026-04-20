@@ -4,7 +4,9 @@ FROM node:20-alpine AS deps
 
 WORKDIR /app
 
-RUN apk add --no-cache \
+# Upgrade and install latest CA certs + SSL libs for TLS connectivity
+RUN apk upgrade --no-cache && \
+    apk add --no-cache \
         chromium \
         chromium-chromedriver \
         nss \
@@ -13,6 +15,7 @@ RUN apk add --no-cache \
         harfbuzz \
         harfbuzz-dev \
         ca-certificates \
+        ca-certificates-bundle \
         ttf-freefont \
         fontconfig \
         fontconfig-dev \
@@ -24,11 +27,18 @@ RUN apk add --no-cache \
         libwebp-dev \
         gcompat \
         libc6-compat \
-        curl
+        curl \
+        openssl \
+        busybox \
+        wget
+
+# Update CA certificates store
+RUN update-ca-certificates 2>/dev/null || true
 
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 ENV PUPPETEER_CHROMIUM_ARGS="--no-sandbox --disable-setuid-sandbox --disable-dev-shm-usage --disable-gpu"
+ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
 
 COPY package*.json ./
 
@@ -51,6 +61,7 @@ FROM node:20-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
+ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
 
 COPY --from=deps /usr/bin/chromium-browser /usr/bin/chromium-browser
 COPY --from=deps /usr/bin/chromedriver /usr/bin/chromedriver
@@ -69,6 +80,6 @@ COPY package*.json ./
 EXPOSE 5001
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-    CMD curl -f http://localhost:5001/health || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://localhost:5001/health || exit 1
 
 CMD ["node", "src/service.js"]
