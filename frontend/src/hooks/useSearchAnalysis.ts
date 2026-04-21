@@ -14,7 +14,7 @@ export interface ScrapedTweet {
   text: string;
   username: string;
   name: string;
-  views: number;
+  views: number;c
   likes: number;
   retweets: number;
   replies: number;

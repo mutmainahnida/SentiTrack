@@ -21,6 +21,10 @@ import { SentimentService } from './services/sentiment.service';
   ],
   controllers: [SentimentController],
   providers: [SentimentRepository, SentimentService],
+<<<<<<< Updated upstream
   exports: [SentimentRepository],
+=======
+  exports: [SentimentRepository, SentimentService],
+>>>>>>> Stashed changes
 })
 export class SentimentModule {}
