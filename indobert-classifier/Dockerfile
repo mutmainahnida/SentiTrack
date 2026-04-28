@@ -1,87 +1,57 @@
 # syntax=docker/dockerfile:1
+# IndoBERT Classifier — FastAPI + PyTorch CPU + Transformers
+# Total image: ~1.8GB (vs ~2.5GB with GPU build)
 
+# ─────────────────────────────────────────────
+# Stage 1: Builder
+# ─────────────────────────────────────────────
 FROM python:3.11-slim AS builder
 
 WORKDIR /app
 
-# Use faster mirrors and handle network issues gracefully
-RUN echo 'Acquire::Retries 3;' > /etc/apt/apt.conf.d/99retry && \
-    echo 'Acquire::http::Timeout "30";' >> /etc/apt/apt.conf.d/99retry && \
-    echo 'Acquire::https::Timeout "60";' >> /etc/apt/apt.conf.d/99retry && \
-    apt-get update && apt-get install -y --no-install-recommends \
-        curl \
+# Build deps
+RUN apt-get update && apt-get install -y --no-install-recommends \
         gcc \
-        git \
-    && rm -rf /var/lib/apt/lists/* || \
-    (echo "apt-get update failed, retrying..." && apt-get update && apt-get install -y --no-install-recommends curl gcc git)
+        curl \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN mkdir -p /root/.cache/huggingface
+COPY requirements.txt ./
 
-COPY requirements.txt* pyproject.toml* ./
+# CPU-only PyTorch (~700MB vs ~2.5GB GPU build)
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir \
+        torch==2.5.1 \
+        --index-url https://download.pytorch.org/whl/cpu
 
-RUN pip install --no-cache-dir --upgrade pip wheel setuptools
+# Remaining deps (torch already present, pip skips it)
+RUN sed '/^torch/d' requirements.txt > /tmp/req-notorch.txt && \
+    pip install --no-cache-dir -r /tmp/req-notorch.txt
 
-RUN pip install --no-cache-dir \
-    torch \
-    torchvision \
-    --index-url https://download.pytorch.org/whl/cpu || \
-    pip install --no-cache-dir torch torchvision
+COPY app/ ./app/
 
-RUN pip install --no-cache-dir \
-    transformers \
-    huggingface_hub \
-    pydantic \
-    "bullmq>=2.0.0" \
-    "redis>=4.0.0"
-
+# ─────────────────────────────────────────────
+# Stage 2: Runtime — zero pip install
+# Copy pre-built packages from builder
+# ─────────────────────────────────────────────
 FROM python:3.11-slim AS runner
 
 WORKDIR /app
 
-RUN echo 'Acquire::Retries 3;' > /etc/apt/apt.conf.d/99retry && \
-    echo 'Acquire::http::Timeout "30";' >> /etc/apt/apt.conf.d/99retry && \
-    echo 'Acquire::https::Timeout "60";' >> /etc/apt/apt.conf.d/99retry && \
-    apt-get update && apt-get install -y --no-install-recommends \
-        curl \
+# Minimal runtime deps for PyTorch threading only
+RUN apt-get update && apt-get install -y --no-install-recommends \
         libgomp1 \
-    && rm -rf /var/lib/apt/lists/* || \
-    (echo "apt-get update failed, retrying..." && apt-get update && apt-get install -y --no-install-recommends curl libgomp1)
+    && rm -rf /var/lib/apt/lists/*
 
-RUN mkdir -p /root/.cache/huggingface
-
+# Package copies are the image bulk (~800MB). No reinstall needed.
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
-COPY --from=builder /usr/local/bin /usr/local/bin
+COPY --from=builder /usr/local/bin/uvicorn /usr/local/bin/uvicorn
+COPY --from=builder /app/app ./app/
 
-COPY app/ ./app/
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    HF_HOME=/root/.cache/huggingface \
+    TRANSFORMERS_CACHE=/root/.cache/huggingface
 
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
-ENV TRANSFORMERS_CACHE=/root/.cache/huggingface
-ENV HF_HOME=/root/.cache/huggingface
+EXPOSE 5002
 
-RUN printf '%s\n' \
-    '#!/bin/bash' \
-    'set -e' \
-    '' \
-    'MODEL_NAME="${MODEL_NAME:-Aardiiiiy/indobertweet-base-Indonesian-sentiment-analysis}"' \
-    'CACHE_DIR="${HF_HOME:-/root/.cache/huggingface}"' \
-    '' \
-    'echo "[startup] Checking model cache at $CACHE_DIR..."' \
-    '' \
-    '# Check if model already cached' \
-    'if [ -d "$CACHE_DIR/hub" ] && ls "$CACHE_DIR/hub/models--${MODEL_NAME//\//--}" 2>/dev/null | grep -q .; then' \
-    '    echo "[startup] Model found in cache. Skipping download."' \
-    'else' \
-    '    echo "[startup] Model not cached. Downloading $MODEL_NAME..."' \
-    '    echo "[startup] This may take a few minutes on first startup..."' \
-    '    python -c "from huggingface_hub import snapshot_download; snapshot_download(repo_id='"'"'$MODEL_NAME'"'"', cache_dir='"'"'$CACHE_DIR'"'"')" || true' \
-    'fi' \
-    '' \
-    'echo "[startup] Starting IndoBERT classifier worker..."' \
-    'exec python -m app.main' \
-    > /app/startup.sh && chmod +x /app/startup.sh
-
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD wget --quiet --tries=1 --spider http://localhost:8000/health || exit 1
-
-CMD ["/app/startup.sh"]
+CMD ["python", "-m", "app.main"]

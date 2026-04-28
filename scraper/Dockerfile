@@ -1,29 +1,9 @@
 # syntax=docker/dockerfile:1
+# Scraper — Node.js + Puppeteer + Twitter scraper
 
-FROM node:20-alpine AS deps
-
-WORKDIR /app
-
-# Use default Alpine repos
-RUN apk add --no-cache \
-        chromium \
-        nss \
-        ca-certificates \
-        curl \
-        wget \
-        fontconfig \
-        libjpeg-turbo \
-        libpng \
-        gcompat \
-        libc6-compat
-
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
-ENV PUPPETEER_CHROMIUM_ARGS="--no-sandbox --disable-setuid-sandbox --disable-dev-shm-usage --disable-gpu"
-ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
-
-COPY package*.json ./
-
+# ─────────────────────────────────────────────
+# Stage 1: Builder
+# ─────────────────────────────────────────────
 FROM node:20-alpine AS builder
 
 WORKDIR /app
@@ -31,36 +11,45 @@ WORKDIR /app
 ARG NPM_CONFIG_CACHE=/tmp/npm_cache
 ENV NPM_CONFIG_CACHE=$NPM_CONFIG_CACHE
 
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+
 COPY package*.json ./
 
-RUN --mount=type=cache,target=/tmp/npm_cache \
-    npm ci --ignore-scripts 2>/dev/null || npm ci
+RUN --mount=type=cache,target=$NPM_CONFIG_CACHE \
+    npm ci --ignore-scripts
 
 COPY src/ ./src/
 
+# ─────────────────────────────────────────────
+# Stage 2: Runtime
+# ─────────────────────────────────────────────
 FROM node:20-alpine AS runner
 
 WORKDIR /app
 
-ENV NODE_ENV=production
-ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+# Install Chromium + Puppeteer Linux deps in one layer
+RUN apk add --no-cache \
+        chromium \
+        nss \
+        freetype \
+        harfbuzz \
+        ca-certificates \
+        ttf-freefont \
+        wget \
+    && rm -rf /var/cache/apk/*
 
-COPY --from=deps /usr/bin/chromium-browser /usr/bin/chromium-browser
-COPY --from=deps /etc/ssl/certs /etc/ssl/certs
-COPY --from=deps /usr/share/fonts /usr/share/fonts
-
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
-ENV PUPPETEER_CHROMIUM_ARGS="--no-sandbox --disable-setuid-sandbox --disable-dev-shm-usage --disable-gpu"
+# Puppeteer config: use system chromium, no sandbox (required in containers)
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser \
+    PUPPETEER_CHROMIUM_ARGS="--no-sandbox --disable-setuid-sandbox --disable-dev-shm-usage --disable-gpu" \
+    NODE_ENV=production \
+    SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
 
 COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/src ./src
-
+COPY --from=builder /app/src ./src/
 COPY package*.json ./
 
 EXPOSE 5001
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:5001/health || exit 1
-
+# Healthcheck handled by compose
 CMD ["node", "src/service.js"]

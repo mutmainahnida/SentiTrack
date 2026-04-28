@@ -1,93 +1,85 @@
 services:
   redis:
-    image: redis:alpine
+    image: redis:7-alpine
     container_name: sentitrack-redis
+    restart: unless-stopped
     networks:
       - sentitrack-net
     ports:
-      - "${REDIS_EXTERNAL_PORT:-6380}:6379"
+      - "${REDIS_PORT:-6379}:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
+      interval: 5s
+      timeout: 3s
       retries: 5
       start_period: 5s
-    deploy:
-      resources:
-        limits:
-          cpus: "0.25"
-          memory: 256M
+
   postgres:
     image: postgres:16-alpine
     container_name: sentitrack-postgres
+    restart: unless-stopped
     networks:
       - sentitrack-net
-    restart: unless-stopped
     ports:
       - "${POSTGRES_EXTERNAL_PORT:-5432}:5432"
     environment:
       POSTGRES_DB: sentitrack
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-S3NT1M3N_DB4S}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d sentitrack"]
-      interval: 10s
-      timeout: 5s
+      interval: 5s
+      timeout: 3s
       retries: 5
       start_period: 10s
-    deploy:
-      resources:
-        limits:
-          cpus: "0.5"
-          memory: 512M
+
   backend-api:
     build:
       context: ./backend-api
-      args:
-        NODE_ENV: production
-    shm_size: 64mb
+      dockerfile: Dockerfile
     container_name: sentitrack-backend-api
+    restart: unless-stopped
     networks:
       - sentitrack-net
     ports:
       - "${BACKEND_PORT:-5000}:5000"
     depends_on:
-      redis:
-        condition: service_healthy
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     environment:
       PORT: 5000
       NODE_ENV: production
-      FRONTEND_PORT: ${FRONTEND_PORT:-3000}
-      SCRAPER_PORT: ${SCRAPER_PORT:-5001}
-      INDOBERT_PORT: ${INDOBERT_PORT:-5002}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
-      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-changeme}
-      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-changeme}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-S3NT1M3N_ACC3SS_T0K3N_S3CR3T_2024}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-S3NT1M3N_R3FR3SH_T0K3N_S3CR3T_2024}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-changeme}@postgres:5432/sentitrack?schema=public
-      SCRAPER_BASE_URL: http://scraper:5001
-      INDOBERT_BASE_URL: http://indobert-classifier:5002
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:S3NT1M3N_DB4S@postgres:5432/sentitrack?schema=public}
+      SCRAPER_BASE_URL: ${SCRAPER_BASE_URL:-http://scraper:5001}
+      INDOBERT_BASE_URL: ${INDOBERT_BASE_URL:-http://indobert:5002}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-    deploy:
-      resources:
-        limits:
-          cpus: "1"
-          memory: 512M
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5000/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
   scraper:
     build:
       context: ./scraper
-    shm_size: 128mb
+      dockerfile: Dockerfile
     container_name: sentitrack-scraper
+    restart: unless-stopped
+    shm_size: 256mb
     networks:
       - sentitrack-net
-    restart: unless-stopped
     ports:
       - "${SCRAPER_PORT:-5001}:5001"
     depends_on:
@@ -95,66 +87,61 @@ services:
         condition: service_healthy
     environment:
       NODE_ENV: production
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
       SCRAPER_PORT: ${SCRAPER_PORT:-5001}
       SSL_CERT_FILE: /etc/ssl/certs/ca-certificates.crt
     volumes:
       - ./scraper/cookies.json:/app/cookies.json:ro
-      - ./scraper/results:/app/results
+      - scraper_results:/app/results
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:5001/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
-    deploy:
-      resources:
-        limits:
-          cpus: "1"
-          memory: 512M
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5001/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
 
-  indobert-classifier:
+  indobert:
     build:
       context: ./indobert-classifier
-    container_name: sentitrack-indobert-classifier
+      dockerfile: Dockerfile
+    container_name: sentitrack-indobert
+    restart: unless-stopped
     networks:
       - sentitrack-net
-    ports:
-      - "${INDOBERT_PORT:-5002}:5002"
     depends_on:
       redis:
         condition: service_healthy
     environment:
+      INDOBERT_PORT: 5002
       DEVICE: cpu
-      BATCH_SIZE: ${BATCH_SIZE:-32}
+      BATCH_SIZE: ${BATCH_SIZE:-8}
       MAX_LENGTH: ${MAX_LENGTH:-128}
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      REDIS_URL: redis://redis:6379
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      REDIS_URL: redis://${REDIS_HOST:-redis}:${REDIS_PORT:-6379}
       MODEL_NAME: ${MODEL_NAME:-Aardiiiiy/indobertweet-base-Indonesian-sentiment-analysis}
       HF_HOME: /root/.cache/huggingface
       HF_TOKEN: ${HF_TOKEN:-}
     volumes:
       - hf_model_cache:/root/.cache/huggingface
+    ports:
+      - "${INDOBERT_PORT:-5002}:5002"
     healthcheck:
-      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:8000/health || exit 1"]
-      interval: 30s
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5002/health || exit 1"]
+      interval: 15s
       timeout: 10s
-      retries: 3
-      start_period: 60s
-    deploy:
-      resources:
-        limits:
-          cpus: "1"
-          memory: 512M
+      retries: 5
+      start_period: 120s
+
   frontend:
     build:
       context: ./frontend
+      dockerfile: Dockerfile
       args:
-        NEXT_TELEMETRY_DISABLED: "1"
-    shm_size: 64mb
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:5000}
     container_name: sentitrack-frontend
+    restart: unless-stopped
     networks:
       - sentitrack-net
     ports:
@@ -165,13 +152,12 @@ services:
       NODE_ENV: production
       NEXT_TELEMETRY_DISABLED: "1"
       PORT: 3000
-      NEXT_PUBLIC_API_URL: http://backend-api:5000
-      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
-    deploy:
-      resources:
-        limits:
-          cpus: "0.5"
-          memory: 512M
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
 
 networks:
   sentitrack-net:
@@ -180,3 +166,4 @@ networks:
 volumes:
   postgres_data:
   hf_model_cache:
+  scraper_results:
