@@ -25,7 +25,7 @@ REDIS_PORT = int(os.environ.get("REDIS_PORT", "6379"))
 classifier = None
 
 
-async def process_job(job):
+async def process_job(job, token=None):
     global classifier
     sentiment_id = job.data["sentimentId"]
     query = job.data.get("query", "")
@@ -125,7 +125,8 @@ class HealthHandler(BaseHTTPRequestHandler):
 
 
 def run_health():
-    server = HTTPServer(("0.0.0.0", 8000), HealthHandler)
+    port = int(os.environ.get("INDOBERT_PORT", "5002"))
+    server = HTTPServer(("0.0.0.0", port), HealthHandler)
     server.serve_forever()
 
 

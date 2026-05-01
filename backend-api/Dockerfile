@@ -1,26 +1,43 @@
-FROM node:20-alpine AS builder
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci
-COPY prisma ./prisma
-RUN npx prisma generate
-COPY . .
-RUN npm run build
-RUN npx tsc prisma/seed.ts --outDir dist/prisma --module commonjs --target es2020 --esModuleInterop --skipLibCheck
-RUN npm ci --omit=dev && npm cache clean --force
+# syntax=docker/dockerfile:1
+# Backend API — NestJS + Prisma
 
-FROM node:20-alpine
+# ─────────────────────────────────────────────
+# Stage 1: Builder
+# ─────────────────────────────────────────────
+FROM node:20-alpine AS builder
+
 WORKDIR /app
+
+ARG NPM_CONFIG_CACHE=/tmp/npm_cache
+ENV NPM_CONFIG_CACHE=$NPM_CONFIG_CACHE
+
+COPY package*.json ./
+
+RUN --mount=type=cache,target=$NPM_CONFIG_CACHE \
+    npm ci --ignore-scripts
+
+COPY . .
+
+# Generate Prisma client + compile TS in one layer
+RUN npx prisma generate && \
+    npm run build
+
+# ─────────────────────────────────────────────
+# Stage 2: Runner
+# ─────────────────────────────────────────────
+FROM node:20-alpine AS runner
+
+WORKDIR /app
+
 ENV NODE_ENV=production
 
+# Copy only what's needed
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/prisma ./prisma
-COPY package.json ./
-COPY docker-entrypoint.sh ./
-
-RUN chmod +x docker-entrypoint.sh
-RUN chmod +x node_modules/.bin/prisma
+COPY --from=builder /app/package.json ./
 
 EXPOSE 5000
-ENTRYPOINT ["./docker-entrypoint.sh"]
+
+# Healthcheck handled by compose
+CMD ["node", "dist/src/main"]
