@@ -4,12 +4,8 @@ import { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuthStore } from "@/stores/authStore";
 import { useTheme } from "@/components/ThemeProvider";
-import MaterialIcon from "../MaterialIcon";
-import { SidebarToggle } from "@/components/Sidebar";
-
-interface TopBarProps {
-  onSidebarToggle?: () => void;
-}
+import { FaSun, FaMoon, FaBell } from "react-icons/fa";
+import { IconByName } from "@/components/ReactIcon";
 
 const titleMap: Record<string, string> = {
   "/": "Overview",
@@ -17,6 +13,10 @@ const titleMap: Record<string, string> = {
   "/search": "Search Results",
   "/history": "Recent Searches",
 };
+
+interface TopBarProps {
+  onSidebarToggle?: () => void;
+}
 
 export default function TopBar({ onSidebarToggle }: TopBarProps) {
   const pathname = usePathname();
@@ -39,7 +39,7 @@ export default function TopBar({ onSidebarToggle }: TopBarProps) {
           className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center text-app-muted hover:text-app-main hover:bg-app-surface-low dark:hover:bg-app-surface-low transition-colors lg:hidden"
           aria-label="Open sidebar"
         >
-          <MaterialIcon name="menu" className="text-lg sm:text-xl" />
+          <IconByName name="menu" className="text-lg sm:text-xl" />
         </button>
 
         <h2 className="font-semibold text-sm sm:text-base lg:text-lg text-app-main dark:text-app-main">{title}</h2>
@@ -51,13 +51,10 @@ export default function TopBar({ onSidebarToggle }: TopBarProps) {
             className="p-1.5 sm:p-2 rounded-full hover:bg-app-surface-low dark:hover:bg-app-surface-low transition-colors group"
             title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
           >
-            <MaterialIcon
-              name={theme === "dark" ? "light_mode" : "dark_mode"}
-              className="text-base sm:text-lg text-app-muted dark:text-app-muted group-hover:text-app-primary dark:group-hover:text-app-primary"
-            />
+            {theme === "dark" ? <FaSun /> : <FaMoon />}
           </button>
-          <button className="p-1.5 sm:p-2 rounded-full hover:bg-app-surface-low dark:hover:bg-app-surface-low transition-colors group hidden sm:block">
-            <MaterialIcon name="notifications" className="text-base sm:text-lg text-app-muted dark:text-app-muted group-hover:text-app-primary dark:group-hover:text-app-primary" />
+          <button className="p-2 rounded-full hover:bg-app-surface-low dark:hover:bg-app-surface-low transition-colors group">
+            <FaBell />
           </button>
         </div>
         <div className="hidden sm:block h-6 sm:h-8 w-[1px] bg-app-border-strong dark:bg-app-border-strong" />

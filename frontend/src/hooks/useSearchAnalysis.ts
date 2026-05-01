@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react";
 import { authFetch } from "@/stores/authStore";
 
-const BACKEND_API = "http://localhost:5000";
+const BACKEND_API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
 
 export type AnalysisStatus = "idle" | "loading" | "done" | "error";
 

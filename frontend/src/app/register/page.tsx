@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { apiRegister } from "@/stores/authStore";
-import MaterialIcon from "@/components/MaterialIcon";
+import { FaExclamationCircle, FaCheckCircle, FaEye, FaEyeSlash } from "react-icons/fa";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -76,13 +76,13 @@ export default function RegisterPage() {
         <form onSubmit={handleRegister} className="px-8 py-6 space-y-5">
           {error && (
             <div className="flex items-center gap-2 px-4 py-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-sm text-red-600 dark:text-red-400">
-              <MaterialIcon name="error_outline" className="text-base flex-shrink-0" />
+              <FaExclamationCircle className="flex-shrink-0" />
               {error}
             </div>
           )}
           {success && (
             <div className="flex items-center gap-2 px-4 py-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl text-sm text-emerald-600 dark:text-emerald-400">
-              <MaterialIcon name="check_circle" className="text-base flex-shrink-0" />
+              <FaCheckCircle className="flex-shrink-0" />
               Akun berhasil dibuat! Mengalihkan ke login...
             </div>
           )}
@@ -130,7 +130,7 @@ export default function RegisterPage() {
                 onClick={() => setShowPassword((v) => !v)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-app-muted dark:text-app-muted hover:text-app-primary dark:hover:text-app-primary transition-colors"
               >
-                <MaterialIcon name={showPassword ? "visibility" : "visibility_off"} />
+                {showPassword ? <FaEyeSlash /> : <FaEye />}
               </button>
             </div>
           </div>

@@ -2,7 +2,7 @@
 
 import { create } from "zustand";
 
-const BACKEND_API = "http://localhost:5000";
+const BACKEND_API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
 
 interface TokenData {
   accessToken: string;
@@ -23,6 +23,7 @@ interface StoredAuth {
 interface AuthState {
   isAuthenticated: boolean;
   isHydrated: boolean;
+  isLoginModalOpen: boolean;
   pendingSearchQuery: string | null;
   pendingSearchExecuted: boolean;
   userEmail: string | null;
@@ -33,6 +34,8 @@ interface AuthState {
   login: (email: string, tokens?: { accessToken: string; refreshToken: string; userId?: string }) => void;
   logout: () => void;
   logoutAsync: () => Promise<void>;
+  openLoginModal: () => void;
+  closeLoginModal: () => void;
   openLogoutModal: () => void;
   closeLogoutModal: () => void;
   setPendingSearchQuery: (query: string | null) => void;
@@ -74,30 +77,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   userName: null,
   userId: null,
   isLogoutModalOpen: false,
+  isLoginModalOpen: false,
 
-  hydrate: () => {
-    const stored = loadStoredAuth();
-    if (stored) {
-      set({
-        isAuthenticated: true,
-        isHydrated: true,
-        userId: stored.userId,
-        userName: stored.userName,
-        userEmail: stored.userEmail,
-      });
-    } else {
-      set({ isHydrated: true });
-    }
-  },
-
-  login: (email: string, tokens?: { accessToken: string; refreshToken: string; userId?: string }) => {
+  login: (email, tokens) => {
     if (tokens) {
       saveAuth({
         accessToken: tokens.accessToken,
         refreshToken: tokens.refreshToken,
         userId: tokens.userId ?? "",
-        userEmail: email,
         userName: email.split("@")[0],
+        userEmail: email,
       });
     }
     set({
@@ -106,6 +95,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       userName: email.split("@")[0],
     });
   },
+
+  openLoginModal: () => set({ isLoginModalOpen: true }),
+  closeLoginModal: () => set({ isLoginModalOpen: false }),
 
   logout: () => {
     clearAuth();
@@ -143,16 +135,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   openLogoutModal: () => set({ isLogoutModalOpen: true }),
   closeLogoutModal: () => set({ isLogoutModalOpen: false }),
 
-  setPendingSearchQuery: (query) =>
-    set({ pendingSearchQuery: query }),
+  setPendingSearchQuery: (query) => set({ pendingSearchQuery: query }),
 
-  markPendingSearchExecuted: () =>
-    set({ pendingSearchExecuted: true }),
+  markPendingSearchExecuted: () => set({ pendingSearchExecuted: true }),
 
   resetAuth: () => {
     clearAuth();
     set({
       isAuthenticated: false,
+      isLoginModalOpen: false,
       pendingSearchQuery: null,
       pendingSearchExecuted: false,
       userEmail: null,
@@ -169,6 +160,27 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   getRefreshToken: () => {
     const stored = loadStoredAuth();
     return stored?.refreshToken ?? null;
+  },
+
+  hydrate: () => {
+    const stored = loadStoredAuth();
+    if (stored) {
+      set({
+        isAuthenticated: true,
+        isHydrated: true,
+        userId: stored.userId,
+        userName: stored.userName,
+        userEmail: stored.userEmail,
+      });
+    } else {
+      set({
+        isAuthenticated: false,
+        isHydrated: true,
+        userId: null,
+        userName: null,
+        userEmail: null,
+      });
+    }
   },
 }));
 

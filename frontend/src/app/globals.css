@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -15,6 +16,7 @@
   --surface-container: #f8f9ff;
   --surface-container-low: #f0f4ff;
   --surface-container-lowest: #ffffff;
+  --radius: 0.625rem;
 }
 
 .dark {
@@ -33,7 +35,6 @@
 
 /* ── Tailwind v4 theme via @theme ─────────────────────── */
 @theme inline {
-  /* Semantic tokens mapped from CSS variables */
   --color-app-bg: var(--background);
   --color-app-surface: var(--surface);
   --color-app-main: var(--text-main);
@@ -45,7 +46,6 @@
   --color-app-surface-low: var(--surface-container-low);
   --color-app-surface-lowest: var(--surface-container-lowest);
 
-  /* Utility colors — mapped for dark mode */
   --color-primary: var(--primary);
   --color-on-primary: #ffffff;
   --color-secondary-container: var(--surface-container-low);
@@ -53,9 +53,75 @@
   --color-outline-variant: var(--border-strong);
   --color-on-surface: var(--text-main);
   --color-on-surface-variant: var(--text-muted);
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-sm: calc(var(--radius) * 0.6);
+
+  /* Shadcn-compatible colors */
+  --color-background: var(--background);
+  --color-foreground: var(--text-main);
+  --color-card: var(--surface);
+  --color-card-foreground: var(--text-main);
+  --color-popover: var(--surface);
+  --color-popover-foreground: var(--text-main);
+  --color-secondary: var(--surface-container-low);
+  --color-secondary-foreground: var(--text-main);
+  --color-muted: var(--surface-container-low);
+  --color-muted-foreground: var(--text-muted);
+  --color-accent: var(--surface-container-low);
+  --color-accent-foreground: var(--text-main);
+  --color-destructive: oklch(0.577 0.245 27.325);
+  --color-border: var(--border);
+  --color-input: var(--border);
+  --color-ring: var(--primary);
+
+  /* Animations */
+  --animate-fade-in: fade-in 0.5s ease-out forwards;
+  --animate-slide-up: slide-up 0.5s ease-out forwards;
+  --animate-slide-down: slide-down 0.5s ease-out forwards;
+  --animate-scale-in: scale-in 0.3s ease-out forwards;
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-pulse-glow: pulse-glow 2s ease-in-out infinite;
 }
 
-/* ── Dark mode utility overrides ───────────────────────── */
+/* ── Animations ──────────────────────────────────────── */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-down {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(40, 69, 214, 0.3); }
+  50% { box-shadow: 0 0 40px rgba(40, 69, 214, 0.6); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* ── Dark mode overrides ──────────────────────────────── */
 .dark .bg-app-bg,
 .dark.bg-app-bg { background-color: var(--background); }
 .dark .bg-app-surface,
@@ -78,12 +144,6 @@
 .dark.text-app-primary { color: var(--primary); }
 .dark .bg-app-primary,
 .dark.bg-app-primary { background-color: var(--primary); }
-
-/* ── Soft entrance animation ────────────────────────────── */
-@keyframes softEntrance {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
 
 /* ── Custom Scrollbar ─────────────────────────────────── */
 ::-webkit-scrollbar {
@@ -112,6 +172,13 @@ body {
   font-family: "Inter", sans-serif;
   background: var(--background);
   color: var(--text-main);
-  opacity: 0;
-  animation: softEntrance 500ms ease-out 0ms forwards;
+}
+
+/* ── Selection ───────────────────────────────────────── */
+::selection {
+  background-color: rgba(40, 69, 214, 0.2);
+  color: inherit;
+}
+.dark ::selection {
+  background-color: rgba(58, 154, 255, 0.3);
 }
