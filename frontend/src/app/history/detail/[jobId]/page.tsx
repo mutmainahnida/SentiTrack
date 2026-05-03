@@ -160,7 +160,7 @@ function DetailContent() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <SpinningLoading messageIndex={0} />
+        <SpinningLoading />
       </div>
     );
   }

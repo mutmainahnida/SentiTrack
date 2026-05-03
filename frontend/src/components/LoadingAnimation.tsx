@@ -3,13 +3,6 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
-const MESSAGES = [
-  "Lagi ngumpulin ketikan netizen...",
-  "Memilah komentar pedas, normal, dan manis...",
-  "Sabar ya, data lagi diolah biar jadi informasi yang berguna...",
-  "Data sebentar lagi siap disajikan...",
-];
-
 const STEPS = [
   "Scraping tweets",
   "Analyzing sentiment",
@@ -18,27 +11,17 @@ const STEPS = [
 ];
 
 interface SpinningLoadingProps {
-  messageIndex?: number;
   className?: string;
 }
 
-export default function SpinningLoading({ messageIndex = 0, className = "" }: SpinningLoadingProps) {
+export default function SpinningLoading({ className = "" }: SpinningLoadingProps) {
   const [currentStep, setCurrentStep] = useState(0);
-  const [progress, setProgress] = useState(0);
-  const message = MESSAGES[messageIndex] ?? MESSAGES[0];
 
   useEffect(() => {
     const stepInterval = setInterval(() => {
       setCurrentStep((prev) => (prev + 1) % STEPS.length);
     }, 2000);
     return () => clearInterval(stepInterval);
-  }, []);
-
-  useEffect(() => {
-    const progressInterval = setInterval(() => {
-      setProgress((prev) => (prev >= 100 ? 0 : prev + 2));
-    }, 80);
-    return () => clearInterval(progressInterval);
   }, []);
 
   return (
@@ -99,22 +82,6 @@ export default function SpinningLoading({ messageIndex = 0, className = "" }: Sp
         ))}
       </div>
 
-      {/* Progress bar */}
-      <div className="w-64 sm:w-80">
-        <div className="flex justify-between mb-2">
-          <span className="text-xs font-medium text-app-muted">Progress</span>
-          <span className="text-xs font-bold text-app-primary">{progress}%</span>
-        </div>
-        <div className="h-2 bg-app-surface-low rounded-full overflow-hidden">
-          <motion.div
-            className="h-full rounded-full bg-gradient-to-r from-app-primary via-blue-500 to-app-primary"
-            initial={{ width: 0 }}
-            animate={{ width: `${progress}%` }}
-            transition={{ duration: 0.1 }}
-          />
-        </div>
-      </div>
-
       {/* Current step */}
       <AnimatePresence mode="wait">
         <motion.div
@@ -132,17 +99,6 @@ export default function SpinningLoading({ messageIndex = 0, className = "" }: Sp
           <span className="text-sm font-medium text-app-main">{STEPS[currentStep]}</span>
         </motion.div>
       </AnimatePresence>
-
-      {/* Message */}
-      <motion.p
-        className="text-center text-base md:text-lg text-app-muted font-medium max-w-sm"
-        animate={{ opacity: [0.5, 1, 0.5] }}
-        transition={{ duration: 2, repeat: Infinity }}
-      >
-        {message}
-      </motion.p>
     </div>
   );
 }
-
-export { MESSAGES };

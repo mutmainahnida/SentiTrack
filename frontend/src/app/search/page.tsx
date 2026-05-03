@@ -236,29 +236,20 @@ function SearchContent() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const urlQuery = searchParams.get("q") ?? "";
   const [searchValue, setSearchValue] = useState(urlQuery);
-  const [analysisDone, setAnalysisDone] = useState(false);
 
-  const { status, messageIndex, result, error, startAnalysis } = useSearchAnalysis();
-
-  useEffect(() => {
-    if (urlQuery && !searchValue && status === "idle") {
-      setSearchValue(urlQuery);
-    }
-  }, [urlQuery, searchValue, status]);
+  const { status, result, error, startAnalysis } = useSearchAnalysis();
 
   useEffect(() => {
-    if (urlQuery && status === "idle" && !analysisDone) {
+    if (urlQuery && status === "idle") {
       startAnalysis(urlQuery);
-      setAnalysisDone(true);
     }
-  }, [urlQuery, status, analysisDone, startAnalysis]);
+  }, [urlQuery, status, startAnalysis]);
 
   const handleAnalyze = (kw?: string) => {
     const q = (kw ?? searchValue).trim();
     if (!q) return;
     if (kw) setSearchValue(kw);
     startAnalysis(q);
-    setAnalysisDone(true);
   };
 
   return (
@@ -307,7 +298,7 @@ function SearchContent() {
               <div className="flex-1 min-h-0">
                 {status === "loading" && (
                   <div className="flex items-center justify-center min-h-[400px]">
-                    <LoadingAnimation messageIndex={messageIndex} />
+                    <LoadingAnimation />
                   </div>
                 )}
                 {status === "error" && (
