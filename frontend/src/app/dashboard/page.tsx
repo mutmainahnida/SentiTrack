@@ -5,9 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthStore } from "@/stores/authStore";
 import Sidebar, { SidebarToggle } from "@/components/Sidebar";
 import TopBar from "@/components/TopBar";
-import { IconByName } from "@/components/ReactIcon";
-import { FaSearch, FaChartLine, FaArrowRight, FaChartBar } from "react-icons/fa";
-import { FiTrendingUp, FiRotateCw } from "react-icons/fi";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import PageLayout from "@/components/PageLayout";
 import { Button } from "@/components/ui/button";
@@ -16,147 +13,274 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  LineChart, Line, AreaChart, Area, PieChart, Pie, Cell,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+} from "recharts";
+import {
   useSentimentHistory,
   computeOverallScore,
   computeAvgSentiment,
+  computePeakHour,
   type HistoryItem,
 } from "@/hooks/useSentimentHistory";
 
-function SentimentBarChart({ items }: { items: HistoryItem[] }) {
-  const sentimentBars = [
-    { label: "Positive", key: "positive" as const, color: "#22c55e", bg: "bg-emerald-500" },
-    { label: "Neutral", key: "neutral" as const, color: "#eab308", bg: "bg-yellow-400" },
-    { label: "Negative", key: "negative" as const, color: "#f87171", bg: "bg-red-400" },
-  ];
+const BACKEND_API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
 
-  const pos = items.length > 0 ? Math.round(items.reduce((s, i) => s + i.positivePct, 0) / items.length) : 0;
-  const neu = items.length > 0 ? Math.round(items.reduce((s, i) => s + i.neutralPct, 0) / items.length) : 0;
-  const neg = items.length > 0 ? Math.round(items.reduce((s, i) => s + i.negativePct, 0) / items.length) : 0;
-  const overallScore =
-    pos >= 50
-      ? 65 + Math.round(pos / 3)
-      : pos >= 25
-      ? 40 + Math.round(pos / 2)
-      : 20 + pos;
+/* ── Chart colors ──────────────────────────────────────── */
+const CHART_POSITIVE = "#22D3EE";
+const CHART_NEUTRAL  = "#818CF8";
+const CHART_NEGATIVE = "#FB7185";
+const CHART_MINT     = "#34D399";
+const CHART_BG_LIGHT = "rgba(255,255,255,0.05)";
+const CHART_BG_DARK  = "rgba(11,17,32,0.7)";
 
+/* ── Custom recharts tooltip ────────────────────────────── */
+function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ color: string; name: string; value: number }>; label?: string }) {
+  if (!active || !payload?.length) return null;
   return (
-    <div className="mt-4 space-y-6">
-      {/* Overall score + stacked bar */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-xs font-bold text-app-muted uppercase tracking-wider">
-            Skor Keseluruhan
-          </span>
-          <motion.span
-            key={overallScore}
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="text-2xl font-black text-app-main"
-          >
-            {items.length > 0 ? overallScore : "—"}
-            {items.length > 0 && (
-              <span className="text-sm font-normal text-app-muted ml-1">/100</span>
-            )}
-          </motion.span>
+    <div className="rounded-xl border border-[var(--border-strong)] bg-[var(--surface)] px-4 py-3 shadow-xl text-sm">
+      <p className="font-semibold text-[var(--text-main)] mb-2">{label}</p>
+      {payload.map((p) => (
+        <div key={p.name} className="flex items-center gap-2 text-[var(--text-muted)]">
+          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: p.color }} />
+          <span className="capitalize">{p.name}</span>
+          <strong className="text-[var(--text-main)]">{p.value}%</strong>
         </div>
-        {/* Stacked bar */}
-        <div className="h-5 rounded-full overflow-hidden flex">
-          <motion.div
-            className="bg-emerald-500"
-            initial={{ width: 0 }}
-            animate={{ width: `${pos}%` }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
-          />
-          <motion.div
-            className="bg-yellow-400"
-            initial={{ width: 0 }}
-            animate={{ width: `${neu}%` }}
-            transition={{ duration: 0.8, ease: "easeOut", delay: 0.1 }}
-          />
-          <motion.div
-            className="bg-red-400"
-            initial={{ width: 0 }}
-            animate={{ width: `${neg}%` }}
-            transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
-          />
-        </div>
-        {/* Legend */}
-        <div className="flex gap-4 mt-3">
-          {sentimentBars.map((b, i) => {
-            const val = b.key === "positive" ? pos : b.key === "neutral" ? neu : neg;
-            return (
-              <motion.div
-                key={b.key}
-                className="flex items-center gap-1.5"
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.3 + i * 0.1 }}
-              >
-                <div className={`w-2.5 h-2.5 rounded-full ${b.bg}`} />
-                <span className="text-xs text-app-muted">
-                  {b.label} <strong className="text-app-main">{val}%</strong>
-                </span>
-              </motion.div>
-            );
-          })}
-        </div>
-      </div>
-
-      {items.length > 1 && (
-        <p className="text-xs text-app-muted">
-          Rata-rata dari {items.length} analisis
-        </p>
-      )}
+      ))}
     </div>
   );
 }
 
-function StatCard({ icon, label, value, delay = 0 }: { icon: React.ReactNode; label: string; value: React.ReactNode; delay?: number }) {
+/* ── Sentiment Trend Chart (Line + Area) ────────────────── */
+function SentimentTrendChart({ items }: { items: HistoryItem[] }) {
+  const chartData = [...items].reverse().slice(-14).map((item) => {
+    const date = new Date(item.createdAt);
+    const label = date.toLocaleDateString("id-ID", { day: "2-digit", month: "short" });
+    return {
+      name:    label,
+      positive: item.positivePct,
+      neutral:  item.neutralPct,
+      negative: item.negativePct,
+    };
+  });
+
+  if (chartData.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-3">
+        <svg className="w-10 h-10 text-[var(--text-muted)] opacity-30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+        </svg>
+        <p className="text-sm text-[var(--text-muted)]">Belum ada data trend. Analisis pertama Anda akan muncul di sini.</p>
+      </div>
+    );
+  }
+
+  return (
+    <ResponsiveContainer width="100%" height={220}>
+      <AreaChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+        <defs>
+          <linearGradient id="gradPos" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor={CHART_POSITIVE} stopOpacity={0.25} />
+            <stop offset="95%" stopColor={CHART_POSITIVE} stopOpacity={0.02} />
+          </linearGradient>
+          <linearGradient id="gradNeu" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor={CHART_NEUTRAL} stopOpacity={0.2} />
+            <stop offset="95%" stopColor={CHART_NEUTRAL} stopOpacity={0.02} />
+          </linearGradient>
+          <linearGradient id="gradNeg" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor={CHART_NEGATIVE} stopOpacity={0.2} />
+            <stop offset="95%" stopColor={CHART_NEGATIVE} stopOpacity={0.02} />
+          </linearGradient>
+        </defs>
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+        <XAxis dataKey="name" tick={{ fontSize: 11, fill: "var(--text-muted)" }} axisLine={false} tickLine={false} />
+        <YAxis tick={{ fontSize: 11, fill: "var(--text-muted)" }} axisLine={false} tickLine={false} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
+        <Tooltip content={<ChartTooltip />} />
+        <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12 }} />
+        <Area type="monotone" dataKey="positive" name="Positive" stroke={CHART_POSITIVE} fill="url(#gradPos)" strokeWidth={2} dot={false} />
+        <Area type="monotone" dataKey="neutral" name="Neutral" stroke={CHART_NEUTRAL} fill="url(#gradNeu)" strokeWidth={2} dot={false} />
+        <Area type="monotone" dataKey="negative" name="Negative" stroke={CHART_NEGATIVE} fill="url(#gradNeg)" strokeWidth={2} dot={false} />
+      </AreaChart>
+    </ResponsiveContainer>
+  );
+}
+
+/* ── Sentiment Distribution Donut ───────────────────────── */
+function SentimentDonutChart({ items }: { items: HistoryItem[] }) {
+  const avgPos = items.length ? Math.round(items.reduce((s, i) => s + i.positivePct, 0) / items.length) : 0;
+  const avgNeu = items.length ? Math.round(items.reduce((s, i) => s + i.neutralPct, 0) / items.length) : 0;
+  const avgNeg = items.length ? Math.round(items.reduce((s, i) => s + i.negativePct, 0) / items.length) : 0;
+
+  const data = [
+    { name: "Positive", value: avgPos, color: CHART_POSITIVE },
+    { name: "Neutral",  value: avgNeu, color: CHART_NEUTRAL  },
+    { name: "Negative", value: avgNeg, color: CHART_NEGATIVE },
+  ];
+
+  if (!items.length) {
+    return (
+      <div className="flex flex-col items-center justify-center h-52 gap-3">
+        <svg className="w-10 h-10 text-[var(--text-muted)] opacity-30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+        </svg>
+        <p className="text-sm text-[var(--text-muted)]">Tidak ada data distribusi.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-6">
+      <div className="relative" style={{ width: 140, height: 140 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie data={data} cx="50%" cy="50%" innerRadius={45} outerRadius={65} paddingAngle={3} dataKey="value" stroke="none">
+              {data.map((entry) => <Cell key={entry.name} fill={entry.color} />)}
+            </Pie>
+          </PieChart>
+        </ResponsiveContainer>
+        {/* Center label */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+          <span className="text-2xl font-black text-[var(--text-main)]">{items.length}</span>
+          <span className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wide">Analisis</span>
+        </div>
+      </div>
+      <div className="flex flex-col gap-3">
+        {data.map((d) => (
+          <div key={d.name} className="flex items-center gap-3">
+            <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: d.color }} />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-[var(--text-muted)]">{d.name}</span>
+                <span className="text-sm font-bold text-[var(--text-main)]">{d.value}%</span>
+              </div>
+              <div className="mt-1 h-1.5 rounded-full bg-[var(--border)] overflow-hidden">
+                <motion.div
+                  className="h-full rounded-full"
+                  style={{ backgroundColor: d.color }}
+                  initial={{ width: 0 }}
+                  animate={{ width: `${d.value}%` }}
+                  transition={{ duration: 0.8, ease: "easeOut" }}
+                />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ── Analysis Count Chart ─────────────────────────────── */
+function VolumeChart({ items }: { items: HistoryItem[] }) {
+  // Group by day and count analyses
+  const dayMap: Record<string, number> = {};
+  for (const item of [...items].reverse()) {
+    const d = new Date(item.createdAt);
+    const key = d.toLocaleDateString("id-ID", { day: "2-digit", month: "short" });
+    dayMap[key] = (dayMap[key] ?? 0) + 1;
+  }
+  const chartData = Object.entries(dayMap).slice(-14).map(([name, count]) => ({ name, count }));
+
+  if (!chartData.length) {
+    return (
+      <div className="flex flex-col items-center justify-center h-40 gap-3">
+        <svg className="w-8 h-8 text-[var(--text-muted)] opacity-30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+        </svg>
+        <p className="text-sm text-[var(--text-muted)]">Tidak ada data aktivitas.</p>
+      </div>
+    );
+  }
+
+  return (
+    <ResponsiveContainer width="100%" height={160}>
+      <LineChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+        <XAxis dataKey="name" tick={{ fontSize: 11, fill: "var(--text-muted)" }} axisLine={false} tickLine={false} />
+        <YAxis tick={{ fontSize: 11, fill: "var(--text-muted)" }} axisLine={false} tickLine={false} allowDecimals={false} />
+        <Tooltip content={<ChartTooltip />} />
+        <Line type="monotone" dataKey="count" name="Analisis" stroke={CHART_MINT} strokeWidth={2.5}
+          dot={{ fill: CHART_MINT, r: 3, strokeWidth: 0 }} activeDot={{ r: 5 }} />
+      </LineChart>
+    </ResponsiveContainer>
+  );
+}
+
+/* ── Backend Status Panel ─────────────────────────────── */
+function BackendStatus({ backendUrl }: { backendUrl: string }) {
+  const [status, setStatus] = useState<"loading" | "online" | "offline">("loading");
+  const [latency, setLatency] = useState<number | null>(null);
+
+  useEffect(() => {
+    const check = async () => {
+      const start = Date.now();
+      try {
+        const res = await fetch(`${backendUrl}/health`, { signal: AbortSignal.timeout(3000) });
+        setLatency(Date.now() - start);
+        setStatus(res.ok ? "online" : "offline");
+      } catch {
+        setLatency(null);
+        setStatus("offline");
+      }
+    };
+    check();
+    const interval = setInterval(check, 30000);
+    return () => clearInterval(interval);
+  }, [backendUrl]);
+
+  const color = status === "online" ? CHART_MINT : status === "offline" ? CHART_NEGATIVE : CHART_NEUTRAL;
+  const label = status === "online" ? `Online · ${latency}ms` : status === "offline" ? "Offline" : "Checking...";
+
+  return (
+    <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
+        <motion.span
+          animate={status === "online" ? { opacity: [1, 0.4, 1] } : {}}
+          transition={{ duration: status === "online" ? 2 : 0, repeat: Infinity }}
+          className="w-2 h-2 rounded-full"
+          style={{ backgroundColor: color }}
+        />
+        <span className="text-xs font-semibold" style={{ color }}>{label}</span>
+      </div>
+      <div className="h-4 w-px bg-[var(--border)]" />
+      <div className="flex items-center gap-1.5">
+        <svg className="w-3.5 h-3.5 text-[var(--text-muted)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+        </svg>
+        <span className="text-xs text-[var(--text-muted)] font-mono">API {new URL(backendUrl).hostname}</span>
+      </div>
+    </div>
+  );
+}
+
+/* ── Stat mini card ────────────────────────────────────── */
+function MiniStat({ icon, label, value, accent = CHART_POSITIVE }: { icon: React.ReactNode; label: string; value: React.ReactNode; accent?: string }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay, duration: 0.4 }}
+      transition={{ duration: 0.4 }}
+      className="flex items-center gap-4 p-5 rounded-2xl bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--border-strong)] transition-all duration-300 group"
     >
-      <Card className="group bg-white/80 dark:bg-app-surface/80 backdrop-blur-sm border-app-border hover:border-app-primary/50 transition-all duration-300 hover:shadow-lg">
-        <CardContent className="p-6">
-          <div className="flex items-start justify-between mb-4">
-            <motion.div
-              className="w-12 h-12 rounded-xl bg-gradient-to-br from-app-primary/20 to-blue-400/20 flex items-center justify-center text-app-primary"
-              whileHover={{ scale: 1.1, rotate: 5 }}
-            >
-              {icon}
-            </motion.div>
-          </div>
-          <div className="text-3xl font-black text-app-main tracking-tight mb-1">
-            {value}
-          </div>
-          <p className="text-sm text-app-muted font-medium">{label}</p>
-        </CardContent>
-      </Card>
+      <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 transition-transform duration-300 group-hover:scale-110"
+        style={{ background: `${accent}15`, color: accent }}>
+        {icon}
+      </div>
+      <div className="min-w-0">
+        <div className="text-2xl font-black text-[var(--text-main)] tracking-tight leading-none mb-1">{value}</div>
+        <div className="text-xs font-medium text-[var(--text-muted)]">{label}</div>
+      </div>
     </motion.div>
   );
 }
 
+/* ── Dashboard ──────────────────────────────────────────── */
 function DashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  const {
-    items,
-    loading: statsLoading,
-    error: statsError,
-    total,
-    fetchHistory,
-  } = useSentimentHistory();
-
-  const {
-    isAuthenticated,
-    pendingSearchQuery,
-    setPendingSearchQuery,
-    markPendingSearchExecuted,
-  } = useAuthStore();
+  const { items, loading: statsLoading, total, fetchHistory } = useSentimentHistory();
+  const { isAuthenticated, pendingSearchQuery, setPendingSearchQuery, markPendingSearchExecuted } = useAuthStore();
 
   const urlQuery = searchParams.get("q") ?? "";
   const [searchQuery, setSearchQuery] = useState("");
@@ -164,49 +288,40 @@ function DashboardContent() {
   const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
-    if (!initialized && urlQuery) {
-      setSearchQuery(urlQuery);
-      setInitialized(true);
-    }
+    if (!initialized && urlQuery) { setSearchQuery(urlQuery); setInitialized(true); }
   }, [initialized, urlQuery]);
 
   useEffect(() => {
-    void fetchHistory(1);
+    void fetchHistory();
   }, [fetchHistory]);
 
   useEffect(() => {
-    if (
-      isAuthenticated &&
-      pendingSearchQuery &&
-      pendingSearchQuery !== lastProcessedRef.current
-    ) {
+    if (isAuthenticated && pendingSearchQuery && pendingSearchQuery !== lastProcessedRef.current) {
       const q = pendingSearchQuery;
       lastProcessedRef.current = q;
       markPendingSearchExecuted();
       setPendingSearchQuery(null);
       router.push(`/search?q=${encodeURIComponent(q)}`);
     }
-  }, [
-    isAuthenticated,
-    pendingSearchQuery,
-    markPendingSearchExecuted,
-    setPendingSearchQuery,
-    router,
-  ]);
+  }, [isAuthenticated, pendingSearchQuery, markPendingSearchExecuted, setPendingSearchQuery, router]);
 
   const handleSearch = () => {
     if (!searchQuery.trim()) return;
-    if (!isAuthenticated) {
-      setPendingSearchQuery(searchQuery.trim());
-      router.push("/login");
-    } else {
-      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
-    }
+    if (!isAuthenticated) { setPendingSearchQuery(searchQuery.trim()); router.push("/login"); }
+    else { router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`); }
   };
 
-  const avgScore = computeAvgSentiment(items);
-  const recentItems = items.slice(0, 5);
-  const lastAnalysis = items[0] ?? null;
+  const avgScore  = computeAvgSentiment(items);
+  const peakHour   = computePeakHour(items);
+  const lastItem   = items[0] ?? null;
+  const avgPos     = items.length ? Math.round(items.reduce((s, i) => s + i.positivePct, 0) / items.length) : 0;
+  const avgNeg     = items.length ? Math.round(items.reduce((s, i) => s + i.negativePct, 0) / items.length) : 0;
+  const avgNeu     = items.length ? Math.round(items.reduce((s, i) => s + i.neutralPct, 0) / items.length) : 0;
+
+  const containerVariants: Variants = {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1, transition: { staggerChildren: 0.06 } },
+  };
 
   function timeAgo(iso: string): string {
     const diff = Date.now() - new Date(iso).getTime();
@@ -215,268 +330,250 @@ function DashboardContent() {
     if (min < 60) return `${min}m lalu`;
     const hr = Math.floor(min / 60);
     if (hr < 24) return `${hr}h lalu`;
-    const day = Math.floor(hr / 24);
-    return `${day}d lalu`;
+    return `${Math.floor(hr / 24)}d lalu`;
   }
 
-  const containerVariants: Variants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: { staggerChildren: 0.08 }
-    }
-  };
-
-  const itemVariants: Variants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.4 } }
-  };
-
   return (
-    <div className="flex h-screen overflow-hidden bg-gradient-to-br from-app-bg to-app-surface-low/50 dark:from-app-bg dark:to-app-surface/50">
+    <div className="flex h-screen overflow-hidden bg-[var(--background)]">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <SidebarToggle onClick={() => setSidebarOpen(true)} />
       <PageLayout>
         <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0 lg:pl-16 xl:pl-64">
           <TopBar onSidebarToggle={() => setSidebarOpen(true)} />
           <div className="flex-1 flex flex-col overflow-y-auto">
-            <div className="flex-1 px-4 sm:px-6 lg:px-8 py-6 sm:py-8 max-w-7xl mx-auto w-full">
+            <div className="flex-1 px-4 sm:px-6 lg:px-8 py-6 max-w-7xl mx-auto w-full">
 
-              {/* Hero Section */}
-              <motion.section
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-gradient-to-br from-white/90 to-blue-50/50 dark:from-app-surface/90 dark:to-app-primary/5 rounded-2xl p-10 text-center mb-8 backdrop-blur-sm border border-app-border shadow-lg shadow-app-primary/5"
-              >
-                <motion.div
-                  initial={{ scale: 0.9, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ delay: 0.2 }}
-                  className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-app-primary/10 text-app-primary text-xs font-bold uppercase tracking-wider mb-6"
-                >
-                  <FiTrendingUp className="h-3 w-3" />
-                  AI-Powered Insights
-                </motion.div>
-                <motion.h1
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 }}
-                  className="text-4xl font-black tracking-tight text-app-main mb-4"
-                >
-                  Analisis Sentimen Twitter
-                  <br />
-                  <span className="bg-gradient-to-r from-app-primary to-blue-500 bg-clip-text text-transparent">kurang dari 1 menit</span>
-                </motion.h1>
-                <motion.p
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.4 }}
-                  className="text-app-muted text-lg max-w-2xl mx-auto mb-8"
-                >
-                  Dapatkan pemahaman mendalam tentang sentimen publik terhadap topik, brand, atau akun Twitter dalam hitungan detik.
-                </motion.p>
+              {/* ── Header: Title + Search + Backend Status ─────── */}
+              <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
+                <div>
+                  <h1 className="text-2xl font-black font-display text-[var(--text-main)] tracking-tight">Neural Dashboard</h1>
+                  <p className="text-sm text-[var(--text-muted)] mt-1">Real-time sentiment dari keyword yang Anda cari.</p>
+                </div>
+                {/* Quick search */}
+                <div className="flex items-center gap-3">
+                  <BackendStatus backendUrl={BACKEND_API} />
+                  <div className="relative rounded-xl bg-[var(--surface)] border border-[var(--border-strong)] overflow-hidden flex items-center focus-within:border-[var(--primary)] transition-colors">
+                    <svg className="w-4 h-4 ml-4 text-[var(--text-muted)] flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+                    </svg>
+                    <Input
+                      type="text"
+                      placeholder="Analisis topik baru..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
+                      className="border-0 bg-transparent shadow-none focus-visible:ring-0 text-sm p-2.5 h-9 w-52"
+                    />
+                    <Button size="sm" onClick={handleSearch} className="mr-1.5 h-7 px-4 rounded-lg text-xs font-bold">
+                      Analisis
+                    </Button>
+                  </div>
+                </div>
+              </div>
 
-                {/* Search bar */}
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.5 }}
-                  className="max-w-xl mx-auto"
-                >
-                  <Card className="p-1.5 bg-white dark:bg-app-surface border-app-border shadow-xl">
-                    <div className="flex flex-col sm:flex-row items-stretch gap-2">
-                      <div className="flex items-center px-4 flex-1 gap-3">
-                        <FaSearch className="text-app-muted" />
-                        <Input
-                          type="text"
-                          placeholder="Cari topik, brand, atau akun Twitter..."
-                          value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
-                          onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
-                          className="border-0 bg-transparent shadow-none focus-visible:ring-0"
-                        />
-                      </div>
-                      <Button onClick={handleSearch} className="gap-2">
-                        Analisis <FaArrowRight className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </Card>
-                </motion.div>
-              </motion.section>
-
-              {/* Stats Grid */}
-              <motion.section
-                className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8"
-                variants={containerVariants}
-                initial="hidden"
-                animate="visible"
-              >
-                <StatCard
-                  icon={<FaChartBar className="h-5 w-5" />}
+              {/* ── KPI Stats Row ──────────────────────────────── */}
+              <motion.div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6" variants={containerVariants} initial="hidden" animate="visible">
+                <MiniStat
+                  icon={<svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" /></svg>}
                   label="Total Analisis"
-                  value={statsLoading ? <Skeleton className="h-8 w-20" /> : total.toLocaleString()}
-                  delay={0.1}
+                  value={statsLoading ? <Skeleton className="h-7 w-16" /> : total.toLocaleString()}
+                  accent={CHART_POSITIVE}
                 />
-                <StatCard
-                  icon={<FiTrendingUp className="h-5 w-5" />}
-                  label="Avg. Overall Score"
+                <MiniStat
+                  icon={<svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></svg>}
+                  label="Avg. Skor Sentimen"
                   value={avgScore > 0 ? avgScore : "—"}
-                  delay={0.2}
+                  accent={CHART_MINT}
                 />
-                <StatCard
-                  icon={<FiRotateCw className="h-5 w-5" />}
-                  label="Analisis Terakhir"
-                  value={lastAnalysis ? (
-                    <span className="text-lg truncate">{lastAnalysis.query}</span>
-                  ) : "—"}
-                  delay={0.3}
+                <MiniStat
+                  icon={<svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>}
+                  label="Peak Activity"
+                  value={peakHour}
+                  accent={CHART_NEUTRAL}
                 />
-              </motion.section>
+                <MiniStat
+                  icon={<svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>}
+                  label="Tweet Terakhir"
+                  value={lastItem ? `${lastItem.total.toLocaleString()} tw` : "—"}
+                  accent={CHART_NEGATIVE}
+                />
+              </motion.div>
 
-              {/* Bento Section */}
-              <section className="grid grid-cols-12 gap-6 mb-8">
-                {/* Sentiment Overview */}
+              {/* ── Bento Charts Grid ──────────────────────────── */}
+              <div className="grid grid-cols-12 gap-4 mb-6">
+
+                {/* Sentiment Trend — spans 8 cols */}
                 <motion.div
-                  className="col-span-12"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.4 }}
+                  className="col-span-12 lg:col-span-8"
+                  initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
                 >
-                  <Card className="bg-white/80 dark:bg-app-surface/80 backdrop-blur-sm border-app-border">
-                    <CardHeader>
+                  <Card className="bg-[var(--surface)] border border-[var(--border)] h-full">
+                    <CardHeader className="pb-2">
                       <div className="flex items-center justify-between">
-                        <CardTitle className="text-lg font-bold">Ringkasan Sentimen</CardTitle>
-                        {items.length > 0 && (
-                          <Badge variant="secondary">{items.length} Analisis</Badge>
-                        )}
+                        <CardTitle className="text-sm font-bold text-[var(--text-main)]">Sentimen Trend — 14 Hari Terakhir</CardTitle>
+                        <Badge className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5"
+                          style={{ background: `${CHART_POSITIVE}15`, color: CHART_POSITIVE, border: `1px solid ${CHART_POSITIVE}30` }}>
+                          Live
+                        </Badge>
                       </div>
-                      <p className="text-sm text-app-muted">
-                        Distribusi rata-rata sentimen dari seluruh analisis Anda.
-                      </p>
                     </CardHeader>
                     <CardContent>
-                      {statsLoading ? (
-                        <div className="space-y-4">
-                          <Skeleton className="h-8 w-full" />
-                          <Skeleton className="h-4 w-48" />
+                      {statsLoading ? <Skeleton className="h-56 w-full rounded-xl" /> : <SentimentTrendChart items={items} />}
+                    </CardContent>
+                  </Card>
+                </motion.div>
+
+                {/* Sentiment Distribution — spans 4 cols */}
+                <motion.div
+                  className="col-span-12 lg:col-span-4"
+                  initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+                >
+                  <Card className="bg-[var(--surface)] border border-[var(--border)] h-full">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-bold text-[var(--text-main)]">Distribusi Sentimen</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {statsLoading ? <Skeleton className="h-52 w-full rounded-xl" /> : <SentimentDonutChart items={items} />}
+                    </CardContent>
+                  </Card>
+                </motion.div>
+
+                {/* Volume Chart — spans 6 cols */}
+                <motion.div
+                  className="col-span-12 lg:col-span-6"
+                  initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
+                >
+                  <Card className="bg-[var(--surface)] border border-[var(--border)]">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-bold text-[var(--text-main)]">Analisis per Hari — 14 Hari Terakhir</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {statsLoading ? <Skeleton className="h-40 w-full rounded-xl" /> : <VolumeChart items={items} />}
+                    </CardContent>
+                  </Card>
+                </motion.div>
+
+                {/* Sentiment Breakdown — spans 6 cols */}
+                <motion.div
+                  className="col-span-12 lg:col-span-6"
+                  initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }}
+                >
+                  <Card className="bg-[var(--surface)] border border-[var(--border)] h-full">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-bold text-[var(--text-main)]">Ringkasan Rata-rata</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {items.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center h-40 gap-3">
+                          <p className="text-sm text-[var(--text-muted)]">Mulai analisis untuk melihat ringkasan.</p>
                         </div>
-                      ) : items.length > 0 ? (
-                        <SentimentBarChart items={items} />
                       ) : (
-                        <motion.div
-                          className="flex flex-col items-center justify-center py-12 gap-3"
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                        >
-                          <FaChartLine className="h-12 w-12 text-app-muted/40" />
-                          <p className="text-app-muted">Belum ada data. Mulai analisis pertama.</p>
-                        </motion.div>
+                        <div className="space-y-4">
+                          {[
+                            { label: "Positive", value: avgPos, color: CHART_POSITIVE },
+                            { label: "Neutral",  value: avgNeu, color: CHART_NEUTRAL  },
+                            { label: "Negative", value: avgNeg, color: CHART_NEGATIVE },
+                          ].map((item) => (
+                            <div key={item.label} className="flex items-center gap-3">
+                              <span className="text-xs font-semibold text-[var(--text-muted)] w-20">{item.label}</span>
+                              <div className="flex-1 h-2.5 rounded-full bg-[var(--border)] overflow-hidden">
+                                <motion.div
+                                  className="h-full rounded-full"
+                                  style={{ backgroundColor: item.color }}
+                                  initial={{ width: 0 }}
+                                  animate={{ width: `${item.value}%` }}
+                                  transition={{ duration: 1, ease: "easeOut" }}
+                                />
+                              </div>
+                              <span className="text-sm font-bold text-[var(--text-main)] w-10 text-right">{item.value}%</span>
+                            </div>
+                          ))}
+                          <p className="text-xs text-[var(--text-muted)] pt-2 border-t border-[var(--border)]">
+                            Rata-rata dari <strong className="text-[var(--text-main)]">{items.length}</strong> analisis yang tercatat.
+                          </p>
+                        </div>
                       )}
                     </CardContent>
                   </Card>
                 </motion.div>
-              </section>
+              </div>
 
-              {/* Recent Analytics Table */}
-              <motion.section
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
-              >
-                <Card className="bg-white/80 dark:bg-app-surface/80 backdrop-blur-sm border-app-border overflow-hidden">
-                  <CardHeader className="border-b border-app-border/50 bg-app-surface-low/50">
+              {/* ── Recent Analytics Table ───────────────────────── */}
+              <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
+                <Card className="bg-[var(--surface)] border border-[var(--border)] overflow-hidden">
+                  <CardHeader className="border-b border-[var(--border)] pb-3">
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg font-bold">Analisis Terbaru</CardTitle>
-                      <Button variant="ghost" size="sm" className="text-app-muted">
-                        Lihat Semua Riwayat
+                      <CardTitle className="text-sm font-bold text-[var(--text-main)]">Riwayat Analisis</CardTitle>
+                      <Button variant="ghost" size="sm" className="text-xs text-[var(--text-muted)] font-medium"
+                        onClick={() => router.push("/history")}>
+                        Lihat Semua →
                       </Button>
                     </div>
                   </CardHeader>
-
                   <AnimatePresence mode="wait">
                     {statsLoading ? (
-                      <CardContent className="p-6 space-y-4">
-                        {[1, 2, 3].map((i) => (
-                          <Skeleton key={i} className="h-16 w-full" />
-                        ))}
+                      <CardContent className="p-6 space-y-3">
+                        {[1, 2, 3].map((i) => <Skeleton key={i} className="h-14 w-full rounded-xl" />)}
                       </CardContent>
-                    ) : recentItems.length === 0 ? (
-                      <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className="flex flex-col items-center justify-center py-16 gap-4"
-                      >
-                        <FiRotateCw className="h-12 w-12 text-app-muted/40" />
-                        <p className="text-app-muted">Belum ada analisis. Mulai dari dashboard.</p>
-                        <Button onClick={handleSearch} size="sm">Mulai Analisis</Button>
+                    ) : items.length === 0 ? (
+                      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center py-16 gap-4">
+                        <svg className="w-12 h-12 text-[var(--text-muted)] opacity-25" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                          <polyline points="3.27 6.96 12 12.01 20.73 6.96" /><line x1="12" y1="22.08" x2="12" y2="12" />
+                        </svg>
+                        <p className="text-sm text-[var(--text-muted)]">Belum ada analisis. Mulai dengan mencari topik.</p>
+                        <Button size="sm" onClick={handleSearch} className="font-bold">Mulai Analisis</Button>
                       </motion.div>
                     ) : (
                       <div className="overflow-x-auto">
                         <table className="w-full">
                           <thead>
-                            <tr className="bg-app-surface-low/50 border-b border-app-border/50">
-                              <th className="text-left px-6 py-4 text-xs font-bold text-app-muted uppercase tracking-wider">Keyword</th>
-                              <th className="text-left px-6 py-4 text-xs font-bold text-app-muted uppercase tracking-wider">Sentimen Utama</th>
-                              <th className="text-left px-6 py-4 text-xs font-bold text-app-muted uppercase tracking-wider">Volume</th>
-                              <th className="text-left px-6 py-4 text-xs font-bold text-app-muted uppercase tracking-wider">Skor</th>
+                            <tr className="border-b border-[var(--border)]">
+                              {["Keyword", "Sentimen Utama", "Volume", "Skor", "Waktu"].map((h) => (
+                                <th key={h} className="text-left px-5 py-3.5 text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">{h}</th>
+                              ))}
                             </tr>
                           </thead>
                           <tbody>
                             <AnimatePresence>
-                              {recentItems.map((item, idx) => {
-                                const score = computeOverallScore(
-                                  item.positivePct,
-                                  item.negativePct,
-                                  item.neutralPct,
-                                );
-                                const primary =
-                                  item.positivePct >= item.negativePct &&
-                                  item.positivePct >= item.neutralPct
-                                    ? { label: `Positive (${item.positivePct}%)`, color: "#22c55e" }
-                                    : item.neutralPct >= item.negativePct
-                                    ? { label: `Neutral (${item.neutralPct}%)`, color: "#eab308" }
-                                    : { label: `Negative (${item.negativePct}%)`, color: "#f87171" };
+                              {items.slice(0, 8).map((item, idx) => {
+                                const score = computeOverallScore(item.positivePct, item.negativePct, item.neutralPct);
+                                const primary = item.positivePct >= item.negativePct && item.positivePct >= item.neutralPct
+                                  ? { label: "Positive", color: CHART_POSITIVE }
+                                  : item.neutralPct >= item.negativePct
+                                  ? { label: "Neutral", color: CHART_NEUTRAL }
+                                  : { label: "Negative", color: CHART_NEGATIVE };
 
                                 return (
                                   <motion.tr
                                     key={item.jobId}
-                                    initial={{ opacity: 0, x: -20 }}
+                                    initial={{ opacity: 0, x: -16 }}
                                     animate={{ opacity: 1, x: 0 }}
-                                    exit={{ opacity: 0, x: 20 }}
-                                    transition={{ delay: idx * 0.05 }}
-                                    className="border-b border-app-border/30 hover:bg-app-surface-low/50 transition-colors"
+                                    exit={{ opacity: 0 }}
+                                    transition={{ delay: idx * 0.04 }}
+                                    className="border-b border-[var(--border)]/40 hover:bg-[var(--border)]/10 transition-colors cursor-pointer"
+                                    onClick={() => router.push(`/search?q=${encodeURIComponent(item.query)}`)}
                                   >
-                                    <td className="px-6 py-4">
-                                      <Button
-                                        variant="link"
-                                        className="text-app-main font-bold p-0 h-auto"
-                                        onClick={() => router.push(`/search?q=${encodeURIComponent(item.query)}`)}
-                                      >
-                                        {item.query}
-                                      </Button>
+                                    <td className="px-5 py-4">
+                                      <span className="text-sm font-bold text-[var(--text-main)]">{item.query}</span>
                                     </td>
-                                    <td className="px-6 py-4">
+                                    <td className="px-5 py-4">
                                       <div className="flex items-center gap-2">
                                         <div className="w-2 h-2 rounded-full" style={{ backgroundColor: primary.color }} />
-                                        <span className="text-sm font-medium text-app-main">{primary.label}</span>
+                                        <span className="text-sm font-medium text-[var(--text-main)]">{primary.label}</span>
+                                        <span className="text-xs text-[var(--text-muted)]">({item.positivePct > item.neutralPct ? item.positivePct : item.neutralPct > item.negativePct ? item.neutralPct : item.negativePct}%)</span>
                                       </div>
                                     </td>
-                                    <td className="px-6 py-4 text-sm text-app-muted font-medium">
-                                      {item.total.toLocaleString()} tweets
-                                    </td>
-                                    <td className="px-6 py-4">
+                                    <td className="px-5 py-4 text-sm text-[var(--text-muted)] font-medium">{item.total.toLocaleString()} tw</td>
+                                    <td className="px-5 py-4">
                                       <Badge
-                                        className={
-                                          score >= 70
-                                            ? "bg-emerald-100 text-emerald-700 border-emerald-200"
-                                            : score >= 40
-                                            ? "bg-blue-100 text-blue-700 border-blue-200"
-                                            : "bg-red-100 text-red-700 border-red-200"
-                                        }
-                                      >
-                                        {score}
-                                      </Badge>
+                                        className="text-xs font-bold border-0"
+                                        style={score >= 70 ? { background: `${CHART_MINT}20`, color: CHART_MINT }
+                                          : score >= 40 ? { background: `${CHART_NEUTRAL}20`, color: CHART_NEUTRAL }
+                                          : { background: `${CHART_NEGATIVE}20`, color: CHART_NEGATIVE }}
+                                      >{score}</Badge>
                                     </td>
+                                    <td className="px-5 py-4 text-xs text-[var(--text-muted)]">{timeAgo(item.createdAt)}</td>
                                   </motion.tr>
                                 );
                               })}
@@ -500,14 +597,10 @@ export default function DashboardPage() {
   const router = useRouter();
   const { isAuthenticated, isHydrated, hydrate } = useAuthStore();
 
-  useEffect(() => {
-    hydrate();
-  }, [hydrate]);
+  useEffect(() => { hydrate(); }, [hydrate]);
 
   useEffect(() => {
-    if (isHydrated && !isAuthenticated) {
-      router.replace("/login");
-    }
+    if (isHydrated && !isAuthenticated) router.replace("/login");
   }, [isHydrated, isAuthenticated, router]);
 
   if (!isHydrated || !isAuthenticated) return null;
@@ -515,11 +608,8 @@ export default function DashboardPage() {
   return (
     <Suspense fallback={
       <div className="flex items-center justify-center h-screen">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          className="w-8 h-8 border-4 border-app-primary border-t-transparent rounded-full"
-        />
+        <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          className="w-8 h-8 border-2 border-[var(--primary)] border-t-transparent rounded-full" />
       </div>
     }>
       <DashboardContent />
