@@ -3,7 +3,7 @@
 import { Suspense, useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthStore } from "@/stores/authStore";
-import Sidebar, { SidebarToggle } from "@/components/Sidebar";
+import Sidebar from "@/components/Sidebar";
 import TopBar from "@/components/TopBar";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import PageLayout from "@/components/PageLayout";
@@ -278,7 +278,6 @@ function MiniStat({ icon, label, value, accent = CHART_POSITIVE }: { icon: React
 function DashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const { items, loading: statsLoading, total, fetchHistory } = useSentimentHistory();
   const { isAuthenticated, pendingSearchQuery, setPendingSearchQuery, markPendingSearchExecuted } = useAuthStore();
 
@@ -335,11 +334,10 @@ function DashboardContent() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-[var(--background)]">
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <SidebarToggle onClick={() => setSidebarOpen(true)} />
+      <Sidebar />
       <PageLayout>
         <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0 lg:pl-16 xl:pl-64">
-          <TopBar onSidebarToggle={() => setSidebarOpen(true)} />
+          <TopBar />
           <div className="flex-1 flex flex-col overflow-y-auto">
             <div className="flex-1 px-4 sm:px-6 lg:px-8 py-6 max-w-7xl mx-auto w-full">
 

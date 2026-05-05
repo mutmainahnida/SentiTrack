@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/stores/authStore";
-import Sidebar, { SidebarToggle } from "@/components/Sidebar";
+import Sidebar from "@/components/Sidebar";
 import TopBar from "@/components/TopBar";
 import { motion } from "framer-motion";
 import { Input } from "@/components/ui/input";
@@ -203,7 +203,6 @@ function Pagination({
 export default function HistoryPage() {
   const router = useRouter();
   const { isAuthenticated, isHydrated, hydrate } = useAuthStore();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [filter, setFilter] = useState("");
 
   const { items, loading, error, page, totalPages, total, fetchHistory } =
@@ -238,8 +237,7 @@ export default function HistoryPage() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-[var(--background)]">
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <SidebarToggle onClick={() => setSidebarOpen(true)} />
+      <Sidebar />
       <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0 lg:pl-16 xl:pl-64">
         <TopBar />
         <div className="flex-1 flex flex-col overflow-y-auto">

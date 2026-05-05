@@ -3,7 +3,7 @@
 import { Suspense, useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAuthStore } from "@/stores/authStore";
-import Sidebar, { SidebarToggle } from "@/components/Sidebar";
+import Sidebar from "@/components/Sidebar";
 import TopBar from "@/components/TopBar";
 import { motion, AnimatePresence } from "framer-motion";
 import LoadingAnimation from "@/components/LoadingAnimation";
@@ -478,7 +478,6 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
 function SearchContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const urlQuery = searchParams.get("q") ?? "";
   const [searchValue, setSearchValue] = useState(urlQuery);
 
@@ -500,8 +499,7 @@ function SearchContent() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-[var(--background)]">
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <SidebarToggle onClick={() => setSidebarOpen(true)} />
+      <Sidebar />
       <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0 lg:pl-16 xl:pl-64">
         <TopBar />
         <div className="flex-1 flex flex-col overflow-y-auto">

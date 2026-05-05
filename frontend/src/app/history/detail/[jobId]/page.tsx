@@ -3,7 +3,7 @@
 import { Suspense, useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuthStore } from "@/stores/authStore";
-import Sidebar, { SidebarToggle } from "@/components/Sidebar";
+import Sidebar from "@/components/Sidebar";
 import TopBar from "@/components/TopBar";
 import { motion, type Variants } from "framer-motion";
 import LoadingAnimation from "@/components/LoadingAnimation";
@@ -580,8 +580,7 @@ export default function SentimentDetailPage() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-[var(--background)]">
-      <Sidebar isOpen={false} onClose={() => {}} />
-      <SidebarToggle onClick={() => {}} />
+      <Sidebar />
       <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0 lg:pl-16 xl:pl-64">
         <TopBar />
         <div className="flex-1 flex flex-col overflow-y-auto">

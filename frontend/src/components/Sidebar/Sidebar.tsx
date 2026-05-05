@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuthStore } from "@/stores/authStore";
-import { IconByName } from "../ReactIcon";
 
 const navItems = [
   { icon: "trending_up", label: "Dashboard", path: "/dashboard" },
@@ -11,104 +10,245 @@ const navItems = [
   { icon: "history", label: "History", path: "/history" },
 ];
 
-interface SidebarProps {
-  isOpen?: boolean;
-  onClose?: () => void;
+/* ── Icon helpers (inline SVG) ────────────────────── */
+function IconPulse({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+    </svg>
+  );
+}
+function IconTrendingUp({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" />
+    </svg>
+  );
+}
+function IconSearch({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+    </svg>
+  );
+}
+function IconHistory({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 3v5h5" /><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8" /><path d="M12 7v5l4 2" />
+    </svg>
+  );
+}
+function IconLogout({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
+    </svg>
+  );
 }
 
-export function SidebarToggle({ onClick }: { onClick: () => void }) {
+const ICON_MAP: Record<string, React.FC<{ className?: string }>> = {
+  trending_up: IconTrendingUp,
+  search: IconSearch,
+  history: IconHistory,
+  logout: IconLogout,
+};
+
+function NavIcon({ name, className }: { name: string; className?: string }) {
+  const Comp = ICON_MAP[name];
+  if (!Comp) return <IconSearch className={className} />;
+  return <Comp className={className} />;
+}
+
+/* ── NavButton ────────────────────────────────────── */
+function NavButton({ item, isActive, onClick }: {
+  item: (typeof navItems)[0];
+  isActive: boolean;
+  onClick: () => void;
+}) {
   return (
     <button
       onClick={onClick}
-      className="fixed top-4 left-4 z-30 lg:hidden p-2 rounded-lg bg-app-surface-low dark:bg-app-surface border border-app-border shadow-sm"
-      aria-label="Open sidebar"
+      className={`
+        group relative flex items-center gap-3 w-full px-3 py-3 rounded-xl text-left
+        transition-all duration-200 cursor-pointer bg-transparent border-0
+        ${isActive
+          ? "text-[var(--primary)]"
+          : "text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--surface-container)]"
+        }
+      `}
     >
-      <svg className="w-5 h-5 text-app-main" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-      </svg>
+      {isActive && (
+        <>
+          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-8 rounded-r-full bg-[var(--primary)] shadow-[0_0_8px_var(--primary)]" />
+          <div className="absolute left-0 inset-y-0 w-1.5 bg-gradient-to-r from-[var(--primary)]/20 to-transparent" />
+        </>
+      )}
+      <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-200 ${
+        isActive
+          ? "bg-[var(--primary)]/15 text-[var(--primary)] shadow-[0_0_12px_var(--primary)]/20"
+          : ""
+      }`}>
+        <NavIcon name={item.icon} className="w-5 h-5" />
+      </div>
+      <span className={`text-sm font-semibold whitespace-nowrap overflow-hidden ${
+        isActive ? "text-[var(--text-main)] font-bold" : ""
+      }`}>
+        {item.label}
+      </span>
     </button>
   );
 }
 
-export default function Sidebar({ isOpen, onClose }: SidebarProps) {
+/* ── Sidebar (fixed on desktop, logo trigger on mobile) ── */
+export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { isAuthenticated, openLogoutModal } = useAuthStore();
+  const { openLogoutModal } = useAuthStore();
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
-  useEffect(() => setMounted(true), []);
+  useEffect(() => { setMounted(true); }, []);
 
-  // Close sidebar on route change (mobile)
-  useEffect(() => {
-    if (onClose) onClose();
-  }, [pathname, onClose]);
+  // Close mobile panel on route change
+  useEffect(() => { setMobileOpen(false); }, [pathname]);
+
+  const handleNavigate = (path: string) => router.push(path);
 
   return (
     <>
-      {/* Mobile: Backdrop overlay */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 lg:hidden"
-          onClick={onClose}
-        />
-      )}
-
-      {/* Sidebar */}
+      {/* ── Desktop: fixed persistent sidebar ─────────── */}
       <aside
         className={`
-          fixed left-0 top-0 h-screen z-50 flex flex-col py-6 px-4 sm:px-6 border-r border-app-border-strong dark:border-app-border-strong bg-app-surface-low dark:bg-[#0F172A] transition-transform duration-300 ease-out
-          ${isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
-          lg:translate-x-0 lg:w-16 xl:w-64
+          hidden lg:flex flex-col
+          fixed left-0 top-0 h-screen z-40
+          w-56 bg-[var(--surface)]/90 backdrop-blur-xl
+          border-r border-[var(--border)]
         `}
       >
-        {/* Logo */}
-        <div className="mb-8 sm:mb-12 px-2">
-          <h1 className="text-lg sm:text-xl lg:text-2xl font-black tracking-tighter text-app-main dark:text-app-main whitespace-nowrap">
-            SentiTrack
-          </h1>
-          <p className="text-[10px] sm:text-xs font-medium text-app-primary dark:text-app-primary opacity-70 hidden xl:block">
-            Precision Analytics
-          </p>
-        </div>
+        <div className="flex flex-col h-full w-full overflow-hidden px-4 py-6">
 
-        {/* Navigation */}
-        <nav className="flex-1 space-y-2">
-        {navItems.map((item) => {
-          const isActive = pathname === item.path;
-          return (
-            <a
-              key={item.path}
-              href={item.path}
-              onClick={(e) => {
-                e.preventDefault();
-                router.push(item.path);
-              }}
-              className={`flex items-center gap-3 py-3 px-4 rounded-lg transition-colors ${
-                isActive
-                  ? "text-app-primary font-bold border-r-2 border-app-primary bg-app-surface-low shadow-sm"
-                  : "text-app-muted hover:text-app-primary hover:bg-app-primary/10 hover:translate-x-1"
-              }`}
+          {/* Logo */}
+          <div className="mb-10 px-2 flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[var(--primary)] to-[var(--secondary)] flex items-center justify-center flex-shrink-0 shadow-lg shadow-[var(--primary)]/25">
+              <IconPulse className="w-5 h-5 text-white" />
+            </div>
+            <div className="overflow-hidden">
+              <h1 className="text-base font-extrabold whitespace-nowrap tracking-tight text-[var(--text-main)]">SentiTrack</h1>
+              <p className="text-[10px] font-medium text-[var(--primary)] whitespace-nowrap">Sentiment AI</p>
+            </div>
+          </div>
+
+          {/* Nav */}
+          <nav className="flex-1 space-y-1.5">
+            {navItems.map((item) => (
+              <NavButton
+                key={item.path}
+                item={item}
+                isActive={pathname === item.path}
+                onClick={() => handleNavigate(item.path)}
+              />
+            ))}
+          </nav>
+
+          {/* Logout */}
+          <div className="pt-6 border-t border-[var(--border)]">
+            <button
+              onClick={openLogoutModal}
+              className="group flex items-center gap-3 w-full px-3 py-3 rounded-xl text-left
+                text-[var(--text-muted)] hover:text-red-400 hover:bg-red-500/5
+                transition-all duration-200 cursor-pointer bg-transparent border-0"
             >
-              <IconByName name={item.icon} />
-              <span className="text-sm">{item.label}</span>
-            </a>
-          );
-        })}
-      </nav>
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:bg-red-500/10 transition-all">
+                <NavIcon name="logout" className="w-5 h-5" />
+              </div>
+              <span className="text-sm font-semibold whitespace-nowrap">Keluar</span>
+            </button>
+          </div>
 
-      {/* Logout */}
-      {mounted && isAuthenticated && (
-        <div className="pt-8 border-t border-app-border-strong dark:border-app-border-strong mt-auto">
-          <button
-            onClick={openLogoutModal}
-            className="flex items-center gap-3 py-3 px-4 w-full rounded-lg transition-all duration-200 text-app-muted border border-transparent hover:border-red-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 group"
-          >
-            <IconByName name="logout" className="group-hover:scale-110 transition-transform" />
-            <span className="text-sm font-bold">Logout</span>
-          </button>
         </div>
-      )}
-    </aside>
+      </aside>
+
+      {/* ── Mobile: logo trigger → full drawer ─────────── */}
+      <div className="lg:hidden">
+        {/* Logo pill button — always visible top-left */}
+        <button
+          onClick={() => setMobileOpen(prev => !prev)}
+          className="fixed top-4 left-4 z-50 flex items-center gap-2.5 px-3 py-2 rounded-xl
+            bg-[var(--surface)]/90 backdrop-blur-xl border border-[var(--border)]
+            shadow-lg shadow-black/10 hover:shadow-xl hover:shadow-black/15
+            transition-all duration-200 cursor-pointer"
+          aria-label="Open sidebar"
+        >
+          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[var(--primary)] to-[var(--secondary)] flex items-center justify-center flex-shrink-0">
+            <IconPulse className="w-4 h-4 text-white" />
+          </div>
+          <span className="text-sm font-extrabold text-[var(--text-main)] tracking-tight">SentiTrack</span>
+        </button>
+
+        {/* Backdrop */}
+        {mobileOpen && (
+          <div
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
+            onClick={() => setMobileOpen(false)}
+          />
+        )}
+
+        {/* Drawer panel */}
+        <aside
+          className={`
+            fixed top-0 left-0 h-screen z-50 flex flex-col
+            bg-[var(--surface)]/95 backdrop-blur-2xl
+            border-r border-[var(--border)]
+            shadow-2xl shadow-black/20
+            transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]
+            ${mobileOpen ? "translate-x-0 w-72" : "-translate-x-full w-72"}
+          `}
+        >
+          {/* Spacer to clear the logo pill */}
+          <div className="h-16" />
+
+          <div className="flex flex-col flex-1 overflow-hidden px-5 py-6">
+            {/* Logo */}
+            <div className="mb-8 px-2 flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[var(--primary)] to-[var(--secondary)] flex items-center justify-center flex-shrink-0 shadow-lg shadow-[var(--primary)]/25">
+                <IconPulse className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h1 className="text-base font-extrabold tracking-tight text-[var(--text-main)]">SentiTrack</h1>
+                <p className="text-[10px] font-medium text-[var(--primary)]">Sentiment AI</p>
+              </div>
+            </div>
+
+            {/* Nav */}
+            <nav className="flex-1 space-y-1.5">
+              {navItems.map((item) => (
+                <NavButton
+                  key={item.path}
+                  item={item}
+                  isActive={pathname === item.path}
+                  onClick={() => { handleNavigate(item.path); setMobileOpen(false); }}
+                />
+              ))}
+            </nav>
+
+            {/* Logout */}
+            <div className="pt-6 border-t border-[var(--border)]">
+              <button
+                onClick={() => { openLogoutModal(); setMobileOpen(false); }}
+                className="group flex items-center gap-3 w-full px-3 py-3 rounded-xl text-left
+                  text-[var(--text-muted)] hover:text-red-400 hover:bg-red-500/5
+                  transition-all duration-200 cursor-pointer bg-transparent border-0"
+              >
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:bg-red-500/10 transition-all">
+                  <NavIcon name="logout" className="w-5 h-5" />
+                </div>
+                <span className="text-sm font-semibold whitespace-nowrap">Keluar</span>
+              </button>
+            </div>
+          </div>
+        </aside>
+      </div>
     </>
   );
 }
