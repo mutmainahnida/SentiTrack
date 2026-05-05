@@ -68,10 +68,7 @@ export function useSearchAnalysis() {
     setStatus("loading");
 
     try {
-      const res = await authFetch(`${BACKEND_API}/api/sentiment`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: trimmed, limit: 50 }),
+      const res = await authFetch(`${BACKEND_API}/api/sentiment?q=${encodeURIComponent(trimmed)}&limit=50`, {
         signal: controller.signal,
       });
 
@@ -106,12 +103,10 @@ export function useSearchAnalysis() {
       const allTweets = analysisResult.tweets ?? [];
       const topInfluential = analysisResult.topInfluential ?? [];
 
-      // Overall score derived from sentiment balance
-      const score = positive >= 50
-        ? 65 + Math.round(positive / 3)
-        : positive >= 25
-        ? 40 + Math.round(positive / 2)
-        : 20 + Math.round(positive);
+      // Overall score: weighted average (positive=1, neutral=0.5, negative=0) normalized 0-100
+      const totalPct = positive + neutral + negative || 1;
+      const rawScore = (positive * 1 + neutral * 0.5 + negative * 0) / totalPct;
+      const score = Math.round(rawScore * 100);
 
       // Map all tweets (null-safe)
       // Prefer `id` as the unique key; fall back to composite so duplicates are impossible
@@ -144,7 +139,7 @@ export function useSearchAnalysis() {
         influenceScore: Number(t.influenceScore) || 0,
       }));
 
-      // Build top keywords from tweet text
+      // Build related keywords from tweet text
       const allText = allTweets
         .map((t: Record<string, unknown>) => String(t.text ?? "").toLowerCase())
         .join(" ");

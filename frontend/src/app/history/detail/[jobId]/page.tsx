@@ -1,289 +1,604 @@
 "use client";
 
 import { Suspense, useState, useEffect } from "react";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useAuthStore } from "@/stores/authStore";
-import Sidebar, { SidebarToggle } from "@/components/Sidebar";
+import Sidebar from "@/components/Sidebar";
 import TopBar from "@/components/TopBar";
-import { IconByName } from "@/components/ReactIcon";
-import { FaSearch, FaArrowLeft, FaChartBar, FaDownload, FaExternalLinkAlt, FaUser, FaThumbsUp, FaComment, FaRetweet, FaHeart, FaEye } from "react-icons/fa";
-import { FiTrendingUp } from "react-icons/fi";
-import { motion } from "framer-motion";
-import PageLayout from "@/components/PageLayout";
-import SpinningLoading from "@/components/LoadingAnimation";
-import { authFetch } from "@/stores/authStore";
+import { motion, type Variants } from "framer-motion";
+import LoadingAnimation from "@/components/LoadingAnimation";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  PieChart, Pie, Cell, ResponsiveContainer,
+} from "recharts";
+import {
+  MessageSquare,
+  Repeat2,
+  Heart,
+  Eye,
+  ArrowLeft,
+  Search,
+  TrendingUp,
+  BarChart3,
+  Clock,
+  ExternalLink,
+  Filter,
+  Download,
+  Share2,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
+} from "lucide-react";
+import { useSentimentHistoryDetail, type MappedTweet, type MappedHistoryDetail } from "@/hooks/useSentimentHistoryDetail";
 
 const BACKEND_API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
 
-interface ScrapedTweet {
-  tweetId: string;
-  name: string;
-  username: string;
-  text: string;
-  replies: number;
-  retweets: number;
-  likes: number;
-  views: number;
-  sentiment: "positive" | "neutral" | "negative";
-  sentimentScore: number;
-  influenceScore: number;
-}
+/* ── Chart colors ──────────────────────────────────── */
+const C_POS = "#22D3EE";
+const C_NEU = "#818CF8";
+const C_NEG = "#FB7185";
+const C_MINT = "#34D399";
 
-interface SentimentResult {
-  jobId: string;
-  query: string;
-  total: number;
-  positivePct: number;
-  negativePct: number;
-  neutralPct: number;
-  topKeywords: string[];
-  topInfluential: ScrapedTweet[];
-  tweets: ScrapedTweet[];
-}
-
-const SENTIMENT_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  positive: { bg: "bg-green-50 dark:bg-green-900/40", text: "text-green-700 dark:text-green-400", border: "border-green-200 dark:border-green-800/50" },
-  neutral: { bg: "bg-yellow-50 dark:bg-yellow-900/40", text: "text-yellow-700 dark:text-yellow-400", border: "border-yellow-200 dark:border-yellow-800/50" },
-  negative: { bg: "bg-red-50 dark:bg-red-900/40", text: "text-red-700 dark:text-red-400", border: "border-red-200 dark:border-red-800/50" },
-};
-
-function formatNumber(n: number): string {
-  if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
-  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
+/* ── Helpers ─────────────────────────────────── */
+function fmt(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
   return String(n);
 }
 
-function TweetCard({ tweet }: { tweet: ScrapedTweet }) {
-  const colors = SENTIMENT_COLORS[tweet.sentiment];
-
-  return (
-    <article className="bg-app-bg dark:bg-app-surface-low border border-app-border/20 dark:border-app-border/20 rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-sm hover:border-app-primary/30 transition-colors">
-      <div className="flex items-start gap-4 mb-4">
-        <div className="w-12 h-12 rounded-full bg-app-surface-low flex items-center justify-center flex-shrink-0">
-          <FaUser className="text-2xl text-app-muted" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2 mb-1">
-            <span className="font-bold text-app-main">{tweet.name}</span>
-            <span className="text-app-muted">@{tweet.username}</span>
-            <span className={`ml-auto inline-flex items-center gap-1 border rounded-full px-2.5 py-0.5 text-xs font-semibold ${colors.bg} ${colors.text} ${colors.border}`}>
-              <IconByName name={`sentiment_${tweet.sentiment}`} />
-              {tweet.sentiment.charAt(0).toUpperCase() + tweet.sentiment.slice(1)}
-            </span>
-          </div>
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-[10px] sm:text-xs text-app-muted">
-            <span className="flex items-center gap-0.5">
-              <FaThumbsUp className="text-[10px]" />
-              {tweet.sentimentScore > 0 ? `+${tweet.sentimentScore}` : tweet.sentimentScore}
-            </span>
-            <span className="flex items-center gap-0.5">
-              <IconByName name="insights" className="text-[10px]" />
-              {formatNumber(tweet.influenceScore)}
-            </span>
-          </div>
-        </div>
-      </div>
-      <p className="text-sm sm:text-base text-app-main mb-3 sm:mb-4 leading-relaxed">{tweet.text}</p>
-      <div className="flex items-center gap-1 text-app-muted text-sm border-t border-app-border/10 pt-3">
-        <span className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-app-surface-low transition-colors">
-          <FaComment className="text-base" /><span>{formatNumber(tweet.replies)}</span>
-        </span>
-        <span className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-green-50 dark:hover:bg-green-900/10 transition-colors">
-          <FaRetweet className="text-base" /><span>{formatNumber(tweet.retweets)}</span>
-        </span>
-        <span className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors">
-          <FaHeart className="text-base" /><span>{formatNumber(tweet.likes)}</span>
-        </span>
-        <span className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-app-surface-low transition-colors">
-          <FaEye className="text-base" /><span>{formatNumber(tweet.views)}</span>
-        </span>
-        <a href={`https://x.com/i/status/${tweet.tweetId}`} target="_blank" rel="noopener noreferrer"
-          className="ml-auto flex items-center gap-1 hover:text-app-primary transition-colors px-1.5 sm:px-2 py-1 rounded hover:bg-app-surface-low">
-          <FaExternalLinkAlt className="text-base" />
-        </a>
-      </div>
-    </article>
-  );
+function fmtCurrency(n: number): string {
+  return n.toLocaleString("id-ID");
 }
 
-function MetricsCard({ label, value, color }: { label: string; value: number; color: string }) {
+/* ── Motion variants ─────────────────────────────────── */
+const containerVariants: Variants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.08 } },
+};
+
+const fadeUp: Variants = {
+  hidden: { opacity: 0, y: 28 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] } },
+};
+
+const fadeIn: Variants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { duration: 0.5 } },
+};
+
+/* ── Sentiment Pie Chart ─────────────────────────────── */
+function SentimentPie({ detail }: { detail: MappedHistoryDetail }) {
+  const posCount = Math.round((detail.positivePct / 100) * detail.total);
+  const neuCount = Math.round((detail.neutralPct / 100) * detail.total);
+  const negCount = Math.round((detail.negativePct / 100) * detail.total);
+
+  const data = [
+    { name: "Positive", value: detail.positivePct, count: posCount, color: C_POS },
+    { name: "Neutral",  value: detail.neutralPct, count: neuCount, color: C_NEU },
+    { name: "Negative", value: detail.negativePct, count: negCount, color: C_NEG },
+  ];
+
   return (
-    <div className="relative bg-app-surface-low border border-app-border/10 rounded-xl p-4 sm:p-6 flex flex-col gap-2 overflow-hidden">
-      <div className="absolute right-0 top-0 bottom-0 w-1.5" style={{ backgroundColor: color }} />
-      <p className="text-xs font-semibold text-app-primary">{label}</p>
-      <div className="flex items-end gap-1">
-        <span className="text-3xl font-black text-app-main">{value}%</span>
+    <div className="flex items-center gap-6">
+      <div style={{ width: 160, height: 160, position: "relative" }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={data}
+              cx="50%"
+              cy="50%"
+              innerRadius={48}
+              outerRadius={72}
+              paddingAngle={3}
+              dataKey="value"
+              stroke="none"
+            >
+              {data.map((d) => <Cell key={d.name} fill={d.color} />)}
+            </Pie>
+          </PieChart>
+        </ResponsiveContainer>
+        {/* Center label */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+          <span className="text-3xl font-black text-[var(--text-main)]">{detail.score}</span>
+          <span className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">/100</span>
+        </div>
+      </div>
+      <div className="flex flex-col gap-3 flex-1">
+        {data.map((d) => (
+          <div key={d.name} className="flex items-center gap-3">
+            <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: d.color }} />
+            <div className="flex-1 min-w-0">
+              <div className="flex justify-between mb-1">
+                <span className="text-xs font-medium text-[var(--text-muted)]">{d.name}</span>
+                <span className="text-sm font-bold text-[var(--text-main)]">{d.value}%</span>
+              </div>
+              <div className="h-2 rounded-full bg-[var(--border)] overflow-hidden">
+                <motion.div className="h-full rounded-full" style={{ backgroundColor: d.color }}
+                  initial={{ width: 0 }} animate={{ width: `${d.value}%` }} transition={{ duration: 0.8, ease: "easeOut" }} />
+              </div>
+              <div className="text-[10px] text-[var(--text-muted)] mt-0.5">{d.count.toLocaleString()} tweets</div>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
 }
 
+/* ── Score Badge ─────────────────────────────────── */
+function ScoreBadge({ score }: { score: number }) {
+  const [color, label] = score >= 70
+    ? [C_MINT, "Excellent"]
+    : score >= 55
+    ? [C_POS, "Good"]
+    : score >= 40
+    ? [C_NEU, "Mixed"]
+    : [C_NEG, "Poor"];
+
+  return (
+    <Badge className="text-xs font-bold border-0"
+      style={{ background: `${color}18`, color, border: `1px solid ${color}30` }}>
+      {label}
+    </Badge>
+  );
+}
+
+/* ── Status Pill ─────────────────────────────────── */
+function StatusPill({ status }: { status: string }) {
+  const config = {
+    COMPLETED: { icon: CheckCircle2, color: C_MINT, label: "Completed" },
+    FAILED: { icon: XCircle, color: C_NEG, label: "Failed" },
+    PROCESSING: { icon: AlertCircle, color: C_NEU, label: "Processing" },
+    QUEUED: { icon: Clock, color: C_NEU, label: "Queued" },
+  };
+  const { icon: Icon, color, label } = config[status as keyof typeof config] ?? config.QUEUED;
+
+  return (
+    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold"
+      style={{ background: `${color}12`, color, border: `1px solid ${color}25` }}>
+      <Icon className="w-3.5 h-3.5" />
+      <span>{label}</span>
+    </div>
+  );
+}
+
+/* ── Keyword Tag ─────────────────────────────────── */
+function KeywordTag({ kw, onClick }: { kw: string; onClick: (k: string) => void }) {
+  return (
+    <button onClick={() => onClick(kw)}
+      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-[var(--surface)] border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--primary)] hover:border-[var(--primary)] hover:bg-[var(--primary)]/5 transition-all duration-200">
+      <Search className="w-3 h-3" />
+      {kw}
+    </button>
+  );
+}
+
+/* ── Tweet Card ──────────────────────────────────── */
+function TweetCard({ tweet, index, variant = "default" }: { tweet: MappedTweet; index: number; variant?: "default" | "compact" }) {
+  const sentimentColor = tweet.sentiment === "positive" ? C_POS
+    : tweet.sentiment === "negative" ? C_NEG : C_NEU;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.04, duration: 0.4 }}
+      className="group rounded-2xl bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--border-strong)] hover:shadow-lg hover:shadow-[var(--primary)]/5 transition-all duration-300 overflow-hidden"
+    >
+      <div className="flex gap-0">
+        {/* Sentiment accent bar */}
+        <div className="w-1.5 flex-shrink-0" style={{ backgroundColor: sentimentColor }} />
+
+        <div className="flex-1 p-6">
+          {variant === "default" && (
+            /* Header — only in default mode */
+            <div className="flex items-start justify-between gap-6 mb-4">
+              <div className="flex items-center gap-6">
+                {/* Avatar */}
+                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[var(--surface-container)] to-[var(--surface)] border border-[var(--border)] flex items-center justify-center flex-shrink-0">
+                  <span className="text-lg font-black text-[var(--text-muted)]">
+                    {tweet.name.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-[var(--text-main)] leading-tight">{tweet.name}</p>
+                  <p className="text-xs text-[var(--text-muted)]">@{tweet.username}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 flex-shrink-0">
+                <Badge className="text-[10px] font-bold border-0"
+                  style={{ background: `${sentimentColor}15`, color: sentimentColor, border: `1px solid ${sentimentColor}25` }}>
+                  {tweet.sentimentLabel}
+                </Badge>
+                <a href={`https://x.com/i/status/${tweet.tweetId}`} target="_blank" rel="noopener noreferrer"
+                  className="text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors p-1.5 rounded-lg hover:bg-[var(--surface-container)]">
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              </div>
+            </div>
+          )}
+
+          {/* Text */}
+          <p className={`text-sm text-[var(--text-main)] leading-relaxed ${variant === "compact" ? "mb-2" : "mb-4"} line-clamp-${variant === "compact" ? "2" : "3"}`}>
+            {tweet.text}
+          </p>
+
+          {/* Stats row */}
+          <div className="flex items-center gap-6 text-[var(--text-muted)]">
+            <div className="flex items-center gap-1.5 text-xs">
+              <MessageSquare className="w-3.5 h-3.5 flex-shrink-0" />
+              <span className="font-medium">{fmt(tweet.replies)}</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs">
+              <Repeat2 className="w-3.5 h-3.5 flex-shrink-0" />
+              <span className="font-medium">{fmt(tweet.retweets)}</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs">
+              <Heart className="w-3.5 h-3.5 flex-shrink-0" />
+              <span className="font-medium">{fmt(tweet.likes)}</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs">
+              <Eye className="w-3.5 h-3.5 flex-shrink-0" />
+              <span className="font-medium">{fmt(tweet.views)}</span>
+            </div>
+            {variant === "default" && tweet.influenceScore > 0 && (
+              <div className="ml-auto flex items-center gap-1.5 text-xs font-semibold" style={{ color: C_MINT }}>
+                <TrendingUp className="w-3.5 h-3.5" />
+                <span>Influence: {tweet.influenceScore.toFixed(1)}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+/* ── Detail Content ────────────────────────────────── */
 function DetailContent() {
   const params = useParams();
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [result, setResult] = useState<SentimentResult | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
   const jobId = params.jobId as string;
-  const query = searchParams.get("q") ?? "";
+
+  const { status, detail, error, fetchDetail } = useSentimentHistoryDetail(jobId);
 
   useEffect(() => {
-    async function fetchDetail() {
-      if (!jobId) return;
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await authFetch(`${BACKEND_API}/api/sentiment/result/${jobId}`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const json = await res.json();
-        setResult(json.data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load details");
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchDetail();
-  }, [jobId]);
+    if (jobId) void fetchDetail();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const overallScore = result
-    ? result.positivePct >= 50
-      ? 65 + Math.round(result.positivePct / 3)
-      : result.positivePct >= 25
-      ? 40 + Math.round(result.positivePct / 2)
-      : 20 + result.positivePct
-    : 0;
+  const [sentimentFilter, setSentimentFilter] = useState<"all" | "positive" | "neutral" | "negative">("all");
 
-  if (loading) {
+  if (status === "loading") {
     return (
-      <div className="flex items-center justify-center h-64">
-        <SpinningLoading />
+      <div className="flex items-center justify-center py-32">
+        <LoadingAnimation />
       </div>
     );
   }
 
-  if (error) {
+  if (status === "error") {
     return (
-      <div className="flex flex-col items-center justify-center py-16 gap-4">
-        <div className="text-5xl">⚠️</div>
-        <p className="text-app-muted">{error}</p>
-        <button onClick={() => router.back()} className="px-4 py-2 bg-app-primary text-white font-bold rounded-lg hover:opacity-90">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col items-center justify-center py-20 gap-6"
+      >
+        <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-[var(--surface)] to-[var(--surface-container)] border border-[var(--border)] flex items-center justify-center">
+          <XCircle className="w-10 h-10 text-[var(--text-muted)]" style={{ color: C_NEG }} />
+        </div>
+        <div className="text-center max-w-md">
+          <h3 className="text-xl font-black text-[var(--text-main)] mb-2">Detail Tidak Ditemukan</h3>
+          <p className="text-sm text-[var(--text-muted)] leading-relaxed">{error ?? "Analisis yang Anda cari tidak ada atau telah dihapus."}</p>
+        </div>
+        <Button onClick={() => router.back()} className="font-bold">
+          <ArrowLeft className="w-4 h-4 mr-2" />
           Kembali
-        </button>
-      </div>
+        </Button>
+      </motion.div>
     );
   }
 
-  if (!result) return null;
+  if (!detail) return null;
+
+  const filteredTweets = sentimentFilter === "all"
+    ? detail.tweets
+    : detail.tweets.filter(t => t.sentiment === sentimentFilter);
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <button onClick={() => router.back()} className="p-2 rounded-lg hover:bg-app-surface-low transition-colors">
-          <FaArrowLeft className="text-lg" />
-        </button>
-        <div>
-          <h1 className="text-xl sm:text-2xl font-black text-app-main">Detail Analisis</h1>
-          <p className="text-sm text-app-muted">"{result.query}" · {result.total.toLocaleString()} tweets</p>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="space-y-6"
+    >
+      {/* ══ Hero Header Section ═══════════════════════ */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="relative overflow-hidden rounded-3xl border border-[var(--border-strong)] bg-gradient-to-br from-[var(--surface)] via-[var(--surface-container-low)] to-[var(--surface)]"
+      >
+        {/* Animated gradient background */}
+        <div className="absolute inset-0 opacity-[0.03]">
+          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[var(--primary)] to-transparent" />
+          <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[var(--secondary)] to-transparent" />
         </div>
-      </div>
 
-      {/* Overview Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-app-bg rounded-xl p-4 sm:p-6 text-center border border-slate-200 dark:border-app-border-strong">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-app-muted mb-2">Overall Score</p>
-          <p className="text-3xl sm:text-4xl font-black text-app-main">{overallScore}<span className="text-lg font-normal text-app-muted">/100</span></p>
-        </div>
-        <MetricsCard label="Positive" value={result.positivePct} color="#22c55e" />
-        <MetricsCard label="Neutral" value={result.neutralPct} color="#eab308" />
-        <MetricsCard label="Negative" value={result.negativePct} color="#f87171" />
-      </div>
-
-      {/* Top Keywords */}
-      {result.topKeywords.length > 0 && (
-        <div className="bg-app-bg rounded-xl p-6 border border-app-border/20">
-          <div className="flex items-center gap-2 mb-4">
-            <FaChartBar className="text-app-primary" />
-            <h3 className="font-bold text-app-main">Trending Keywords</h3>
+        <div className="relative p-6 sm:p-8">
+          {/* Top row: Back button + Actions */}
+          <div className="mb-6 pb-6 border-b border-[var(--border)]">
+            <button
+              onClick={() => router.back()}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--surface-container)] transition-all"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Kembali
+            </button>
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="outline" className="text-xs font-semibold border-[var(--border-strong)]">
+                <Download className="w-3.5 h-3.5 mr-1.5" />
+                Export
+              </Button>
+              <Button size="sm" className="text-xs font-semibold">
+                <Share2 className="w-3.5 h-3.5 mr-1.5" />
+                Share
+              </Button>
+            </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {result.topKeywords.map((kw) => (
+
+          {/* Query + Metadata */}
+          <div className="flex flex-col lg:flex-row gap-6">
+            <div className="flex-1">
+              {/* Query */}
+              <div className="mb-4">
+                <p className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-widest mb-1">Query</p>
+                <h1 className="text-3xl sm:text-4xl font-black text-[var(--text-main)] leading-tight mb-2">
+                  {detail.query}
+                </h1>
+                <div className="flex items-center gap-3">
+                  <StatusPill status={detail.status} />
+                  <ScoreBadge score={detail.score} />
+                </div>
+              </div>
+
+              {/* Metadata pills */}
+              <div className="flex flex-wrap gap-2">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-[var(--surface-container)] border border-[var(--border)]">
+                  <Clock className="w-3 h-3" />
+                  <span>Dibuat: {detail.createdAtDisplay}</span>
+                </div>
+                {detail.completedAtDisplay !== "—" && (
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-[var(--surface-container)] border border-[var(--border)]">
+                    <CheckCircle2 className="w-3 h-3" style={{ color: C_MINT }} />
+                    <span>Selesai: {detail.completedAtDisplay}</span>
+                  </div>
+                )}
+                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-[var(--surface-container)] border border-[var(--border)]">
+                  <span className="font-mono text-[var(--primary)]">{detail.jobId.slice(-8)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick stats card */}
+            <div className="lg:w-80 space-y-3">
+              <div className="rounded-2xl bg-[var(--surface)] border border-[var(--border)] p-6">
+                <p className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">Ringkasan Cepat</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-[10px] text-[var(--text-muted)] mb-0.5">Total Tweets</p>
+                    <p className="text-2xl font-black text-[var(--text-main)] leading-none">{fmtCurrency(detail.total)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-[var(--text-muted)] mb-0.5">Overall Score</p>
+                    <p className="text-2xl font-black leading-none" style={{ color: detail.score >= 70 ? C_MINT : detail.score >= 40 ? C_NEU : C_NEG }}>
+                      {detail.score}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-2xl bg-[var(--surface)] border border-[var(--border)] p-6">
+                <p className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">Distribusi Sentimen</p>
+                <div className="flex flex-col gap-2">
+                  {[
+                    { label: "Positive", pct: detail.positivePct, color: C_POS },
+                    { label: "Neutral", pct: detail.neutralPct, color: C_NEU },
+                    { label: "Negative", pct: detail.negativePct, color: C_NEG },
+                  ].map((item) => (
+                    <div key={item.label} className="flex items-center justify-between">
+                      <span className="text-sm text-[var(--text-muted)]">{item.label}</span>
+                      <span className="text-sm font-bold" style={{ color: item.color }}>{item.pct}%</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* ══ KPI Bento Grid ════════════════════════ */}
+      <motion.div variants={containerVariants} initial="hidden" animate="visible" className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+        {[
+          { label: "Overall Score", value: detail.score, suffix: "/100", icon: BarChart3, color: C_MINT },
+          { label: "Total Tweets", value: fmtCurrency(detail.total), suffix: "", icon: MessageSquare, color: C_POS },
+          { label: "Positive Tweets", value: `${detail.positivePct}%`, suffix: "", icon: CheckCircle2, color: C_POS },
+          { label: "Negative Tweets", value: `${detail.negativePct}%`, suffix: "", icon: XCircle, color: C_NEG },
+        ].map((kpi, i) => (
+          <motion.div key={kpi.label} variants={fadeUp} className="rounded-2xl bg-[var(--surface)] border border-[var(--border)] p-6">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${kpi.color}15`, color: kpi.color }}>
+                <kpi.icon className="w-5 h-5" />
+              </div>
+              <span className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">{kpi.label}</span>
+            </div>
+            <div className="flex items-end gap-1">
+              <span className="text-3xl font-black text-[var(--text-main)] leading-none">{kpi.value}</span>
+              <span className="text-sm font-medium text-[var(--text-muted)] mb-0.5">{kpi.suffix}</span>
+            </div>
+          </motion.div>
+        ))}
+      </motion.div>
+
+      {/* ══ Sentiment Distribution + Keywords (Bento) ═══════ */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+          <Card className="bg-[var(--surface)] border border-[var(--border)] h-full">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-bold text-[var(--text-main)]">Distribusi Sentimen</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <SentimentPie detail={detail} />
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+          <Card className="bg-[var(--surface)] border border-[var(--border)] h-full">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-bold text-[var(--text-main)] flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-[var(--primary)]" />
+                Trending Keywords
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-2">
+                {detail.allKeywords.map((kw) => (
+                  <KeywordTag
+                    key={kw}
+                    kw={kw}
+                    onClick={(k) => router.push(`/search?q=${encodeURIComponent(k)}`)}
+                  />
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </div>
+
+      {/* ══ Top Influential Tweets ═══════════════════════ */}
+      <motion.section
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.35 }}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-black text-[var(--text-main)] flex items-center gap-2">
+            <TrendingUp className="w-5 h-5 text-[var(--primary)]" />
+            Top Influential Tweets
+            <span className="text-sm font-medium text-[var(--text-muted)]">({detail.topInfluential.length})</span>
+          </h2>
+        </div>
+        <div className="space-y-3">
+          {detail.topInfluential.map((tweet, i) => (
+            <TweetCard key={tweet.tweetId} tweet={tweet} index={i} />
+          ))}
+        </div>
+      </motion.section>
+
+      {/* ══ All Tweets with Filter ═══════════════════════ */}
+      <motion.section
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4 }}
+      >
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
+          <h2 className="text-lg font-black text-[var(--text-main)] flex items-center gap-2">
+            <MessageSquare className="w-5 h-5 text-[var(--primary)]" />
+            All Analyzed Tweets
+            <span className="text-sm font-medium text-[var(--text-muted)]">({filteredTweets.length} tweets)</span>
+          </h2>
+
+          {/* Sentiment filter */}
+          <div className="flex items-center gap-2 bg-[var(--surface)] border border-[var(--border)] rounded-lg p-1">
+            {[
+              { key: "all", label: "All" },
+              { key: "positive", label: "Positive" },
+              { key: "neutral", label: "Neutral" },
+              { key: "negative", label: "Negative" },
+            ].map((filter) => (
               <button
-                key={kw}
-                onClick={() => router.push(`/search?q=${encodeURIComponent(kw)}`)}
-                className="bg-app-surface-low text-app-primary rounded-full px-3 py-1.5 text-xs font-semibold hover:bg-app-primary/20 transition-colors flex items-center gap-1"
+                key={filter.key}
+                onClick={() => setSentimentFilter(filter.key as any)}
+                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                  sentimentFilter === filter.key
+                    ? "text-white font-bold"
+                    : "text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--surface-container)]"
+                }`}
+                style={
+                  sentimentFilter === filter.key
+                    ? { background: filter.key === "positive" ? C_POS : filter.key === "negative" ? C_NEG : C_NEU }
+                    : {}
+                }
               >
-                <FaSearch className="text-[10px]" />
-                {kw}
+                {filter.label}
               </button>
             ))}
           </div>
         </div>
-      )}
 
-      {/* Top Influential Tweets */}
-      <div>
-        <h2 className="text-lg font-bold text-app-main mb-4">Top Influential Tweets</h2>
-        <div className="space-y-4">
-          {result.topInfluential.map((tweet) => (
-            <TweetCard key={tweet.tweetId} tweet={tweet} />
-          ))}
-        </div>
-      </div>
-
-      {/* All Tweets */}
-      {result.tweets.length > result.topInfluential.length && (
-        <div>
-          <h2 className="text-lg font-bold text-app-main mb-4">
-            All Analyzed Tweets
-            <span className="ml-2 text-sm font-normal text-app-muted">({result.tweets.length} tweets)</span>
-          </h2>
-          <div className="space-y-4">
-            {result.tweets.slice(result.topInfluential.length).map((tweet) => (
-              <TweetCard key={tweet.tweetId} tweet={tweet} />
+        {filteredTweets.length > 0 ? (
+          <div className="space-y-3">
+            {filteredTweets.map((tweet, i) => (
+              <TweetCard key={tweet.tweetId} tweet={tweet} index={i} variant="default" />
             ))}
           </div>
-        </div>
-      )}
-    </div>
+        ) : (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex flex-col items-center justify-center py-16 gap-4 rounded-2xl border border-dashed border-2 border-[var(--border)]"
+          >
+            <Filter className="w-12 h-12 text-[var(--text-muted)] opacity-40" />
+            <p className="text-sm font-medium text-[var(--text-muted)]">
+              Tidak ada tweet dengan sentimen <strong className="text-[var(--text-main)]">{sentimentFilter}</strong>
+            </p>
+            <Button size="sm" onClick={() => setSentimentFilter("all")} className="font-bold">
+              Tampilkan Semua
+            </Button>
+          </motion.div>
+        )}
+      </motion.section>
+    </motion.div>
   );
 }
 
+/* ── Detail Page ──────────────────────────────────── */
 export default function SentimentDetailPage() {
   const router = useRouter();
   const { isAuthenticated, isHydrated, hydrate } = useAuthStore();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => { hydrate(); }, [hydrate]);
 
   useEffect(() => {
-    if (isHydrated && !isAuthenticated) {
-      router.replace("/login");
-    }
+    if (isHydrated && !isAuthenticated) router.replace("/login");
   }, [isHydrated, isAuthenticated, router]);
 
   if (!isHydrated || !isAuthenticated) return null;
 
   return (
-    <div className="flex h-screen overflow-hidden bg-app-bg">
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <SidebarToggle onClick={() => setSidebarOpen(true)} />
-      <PageLayout>
-        <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0 lg:pl-16 xl:pl-64">
-          <TopBar />
-          <div className="flex-1 flex flex-col overflow-y-auto">
-            <div className="flex-1 px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 max-w-7xl mx-auto w-full">
-              <Suspense fallback={<SpinningLoading />}>
-                <DetailContent />
-              </Suspense>
-            </div>
+    <div className="flex h-screen overflow-hidden bg-[var(--background)]">
+      <Sidebar />
+      <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0 lg:pl-16 xl:pl-64">
+        <TopBar />
+        <div className="flex-1 flex flex-col overflow-y-auto">
+          <div className="flex-1 px-6 lg:px-8 py-8 max-w-7xl mx-auto w-full">
+            <Suspense fallback={
+              <div className="flex items-center justify-center py-32">
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                  className="w-8 h-8 border-2 border-[var(--primary)] border-t-transparent rounded-full"
+                />
+              </div>
+            }>
+              <DetailContent />
+            </Suspense>
           </div>
         </div>
-      </PageLayout>
+      </div>
     </div>
   );
 }

@@ -1,17 +1,25 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Outfit, Plus_Jakarta_Sans } from "next/font/google";
 import ClientLayout from "@/components/ClientLayout";
 import "./globals.css";
 
-const inter = Inter({
-  variable: "--font-inter",
+const outfit = Outfit({
+  variable: "--font-outfit",
   subsets: ["latin"],
-  weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
+  weight: ["300", "400", "500", "600", "700", "800", "900"],
+  display: "swap",
+});
+
+const jakarta = Plus_Jakarta_Sans({
+  variable: "--font-jakarta",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "SentiTrack",
-  description: "Precision Sentiment Analytics Platform",
+  title: "SentiTrack — Neural Sentiment Intelligence",
+  description: "AI-powered Twitter sentiment analysis. Real-time insights, precision accuracy, and visual intelligence for your brand.",
 };
 
 export default function RootLayout({
@@ -20,7 +28,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning data-scroll-behavior="smooth">
       <head>
         <link
           rel="stylesheet"
@@ -28,7 +36,7 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`${inter.variable} min-h-screen flex flex-col antialiased`}
+        className={`${outfit.variable} ${jakarta.variable} font-body min-h-screen flex flex-col antialiased`}
       >
         <ClientLayout>{children}</ClientLayout>
       </body>
