@@ -70,7 +70,26 @@
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-sm: calc(var(--radius) * 0.6);
-  --radius-xl: calc(var(--radius) * 1.2);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+
+  /* ── Spatial Scale ──────────────────────────── */
+  /* Multiples of 8 — primary spacing */
+  --sp-0: 0px;
+  --sp-1: 8px;
+  --sp-2: 16px;
+  --sp-3: 24px;
+  --sp-4: 32px;
+  --sp-5: 40px;
+  --sp-6: 48px;
+  --sp-8: 64px;
+  --sp-10: 80px;
+  --sp-12: 96px;
+  /* Multiples of 4 — fine detail */
+  --sp-d1: 2px;
+  --sp-d2: 4px;
+  --sp-d3: 6px;
+  --sp-d4: 8px;
 
   /* Shadcn-compatible colors */
   --color-background: var(--background);

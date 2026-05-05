@@ -191,11 +191,11 @@ function TweetCard({ tweet, index, variant = "default" }: { tweet: MappedTweet; 
         {/* Sentiment accent bar */}
         <div className="w-1.5 flex-shrink-0" style={{ backgroundColor: sentimentColor }} />
 
-        <div className="flex-1 p-5">
+        <div className="flex-1 p-6">
           {variant === "default" && (
             /* Header — only in default mode */
-            <div className="flex items-start justify-between gap-4 mb-3">
-              <div className="flex items-center gap-3">
+            <div className="flex items-start justify-between gap-6 mb-4">
+              <div className="flex items-center gap-6">
                 {/* Avatar */}
                 <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[var(--surface-container)] to-[var(--surface)] border border-[var(--border)] flex items-center justify-center flex-shrink-0">
                   <span className="text-lg font-black text-[var(--text-muted)]">
@@ -207,7 +207,7 @@ function TweetCard({ tweet, index, variant = "default" }: { tweet: MappedTweet; 
                   <p className="text-xs text-[var(--text-muted)]">@{tweet.username}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="flex items-center gap-3 flex-shrink-0">
                 <Badge className="text-[10px] font-bold border-0"
                   style={{ background: `${sentimentColor}15`, color: sentimentColor, border: `1px solid ${sentimentColor}25` }}>
                   {tweet.sentimentLabel}
@@ -226,7 +226,7 @@ function TweetCard({ tweet, index, variant = "default" }: { tweet: MappedTweet; 
           </p>
 
           {/* Stats row */}
-          <div className="flex items-center gap-4 text-[var(--text-muted)]">
+          <div className="flex items-center gap-6 text-[var(--text-muted)]">
             <div className="flex items-center gap-1.5 text-xs">
               <MessageSquare className="w-3.5 h-3.5 flex-shrink-0" />
               <span className="font-medium">{fmt(tweet.replies)}</span>
@@ -328,7 +328,7 @@ function DetailContent() {
 
         <div className="relative p-6 sm:p-8">
           {/* Top row: Back button + Actions */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 pb-6 border-b border-[var(--border)]">
+          <div className="mb-6 pb-6 border-b border-[var(--border)]">
             <button
               onClick={() => router.back()}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--surface-container)] transition-all"
@@ -383,7 +383,7 @@ function DetailContent() {
 
             {/* Quick stats card */}
             <div className="lg:w-80 space-y-3">
-              <div className="rounded-2xl bg-[var(--surface)] border border-[var(--border)] p-5">
+              <div className="rounded-2xl bg-[var(--surface)] border border-[var(--border)] p-6">
                 <p className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">Ringkasan Cepat</p>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -399,7 +399,7 @@ function DetailContent() {
                 </div>
               </div>
 
-              <div className="rounded-2xl bg-[var(--surface)] border border-[var(--border)] p-5">
+              <div className="rounded-2xl bg-[var(--surface)] border border-[var(--border)] p-6">
                 <p className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">Distribusi Sentimen</p>
                 <div className="flex flex-col gap-2">
                   {[
@@ -420,14 +420,14 @@ function DetailContent() {
       </motion.div>
 
       {/* ══ KPI Bento Grid ════════════════════════ */}
-      <motion.div variants={containerVariants} initial="hidden" animate="visible" className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <motion.div variants={containerVariants} initial="hidden" animate="visible" className="grid grid-cols-2 lg:grid-cols-4 gap-6">
         {[
           { label: "Overall Score", value: detail.score, suffix: "/100", icon: BarChart3, color: C_MINT },
           { label: "Total Tweets", value: fmtCurrency(detail.total), suffix: "", icon: MessageSquare, color: C_POS },
           { label: "Positive Tweets", value: `${detail.positivePct}%`, suffix: "", icon: CheckCircle2, color: C_POS },
           { label: "Negative Tweets", value: `${detail.negativePct}%`, suffix: "", icon: XCircle, color: C_NEG },
         ].map((kpi, i) => (
-          <motion.div key={kpi.label} variants={fadeUp} className="rounded-2xl bg-[var(--surface)] border border-[var(--border)] p-5">
+          <motion.div key={kpi.label} variants={fadeUp} className="rounded-2xl bg-[var(--surface)] border border-[var(--border)] p-6">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${kpi.color}15`, color: kpi.color }}>
                 <kpi.icon className="w-5 h-5" />
@@ -443,7 +443,7 @@ function DetailContent() {
       </motion.div>
 
       {/* ══ Sentiment Distribution + Keywords (Bento) ═══════ */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
           <Card className="bg-[var(--surface)] border border-[var(--border)] h-full">
             <CardHeader className="pb-3">
@@ -584,7 +584,7 @@ export default function SentimentDetailPage() {
       <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0 lg:pl-16 xl:pl-64">
         <TopBar />
         <div className="flex-1 flex flex-col overflow-y-auto">
-          <div className="flex-1 px-4 sm:px-6 lg:px-8 py-6 max-w-7xl mx-auto w-full">
+          <div className="flex-1 px-6 lg:px-8 py-8 max-w-7xl mx-auto w-full">
             <Suspense fallback={
               <div className="flex items-center justify-center py-32">
                 <motion.div

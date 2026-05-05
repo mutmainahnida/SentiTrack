@@ -241,7 +241,7 @@ export default function HistoryPage() {
       <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0 lg:pl-16 xl:pl-64">
         <TopBar />
         <div className="flex-1 flex flex-col overflow-y-auto">
-          <div className="flex-1 px-4 sm:px-6 lg:px-8 py-5 max-w-7xl mx-auto w-full flex flex-col gap-6">
+          <div className="flex-1 px-6 lg:px-8 py-8 max-w-7xl mx-auto w-full flex flex-col gap-8">
 
             {/* Header */}
             <div>
@@ -250,9 +250,9 @@ export default function HistoryPage() {
             </div>
 
             {/* KPI Bento */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
               <Card className="bg-[var(--surface)] border border-[var(--border)]">
-                <CardContent className="p-5">
+                <CardContent className="p-6">
                   <p className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2">Total Analisis</p>
                   <div className="flex items-end gap-1">
                     <span className="text-3xl font-black text-[var(--text-main)] leading-none">{total.toLocaleString()}</span>
@@ -260,7 +260,7 @@ export default function HistoryPage() {
                 </CardContent>
               </Card>
               <Card className="bg-[var(--surface)] border border-[var(--border)]">
-                <CardContent className="p-5">
+                <CardContent className="p-6">
                   <p className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2">Avg. Score</p>
                   <div className="flex items-end gap-1">
                     <span className="text-3xl font-black text-[var(--text-main)] leading-none">{avgScore}</span>
@@ -278,7 +278,7 @@ export default function HistoryPage() {
                 </CardContent>
               </Card>
               <Card className="bg-[var(--surface)] border border-[var(--border)]">
-                <CardContent className="p-5">
+                <CardContent className="p-6">
                   <p className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2">Filter</p>
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] w-4 h-4" />
@@ -333,7 +333,7 @@ export default function HistoryPage() {
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                   {filteredItems.map((item) => (
                     <HistoryCard
                       key={item.jobId}

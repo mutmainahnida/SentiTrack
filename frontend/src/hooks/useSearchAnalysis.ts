@@ -139,7 +139,7 @@ export function useSearchAnalysis() {
         influenceScore: Number(t.influenceScore) || 0,
       }));
 
-      // Build top keywords from tweet text
+      // Build related keywords from tweet text
       const allText = allTweets
         .map((t: Record<string, unknown>) => String(t.text ?? "").toLowerCase())
         .join(" ");

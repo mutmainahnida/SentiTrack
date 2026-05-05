@@ -504,10 +504,10 @@ function SearchContent() {
       <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0 lg:pl-16 xl:pl-64">
         <TopBar />
         <div className="flex-1 flex flex-col overflow-y-auto">
-          <div className="flex-1 px-4 sm:px-6 lg:px-8 py-5 max-w-7xl mx-auto w-full">
+          <div className="flex-1 px-6 lg:px-8 py-8 max-w-7xl mx-auto w-full">
 
             {/* ── Header: title + search + export ──────────────── */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
               <div>
                 <h1 className="text-2xl font-black font-display text-[var(--text-main)] tracking-tight">Neural Analysis</h1>
                 <p className="text-sm text-[var(--text-muted)] mt-1">
@@ -595,7 +595,7 @@ function SearchContent() {
                   className="space-y-6"
                 >
                   {/* KPI row */}
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
                     {[
                       { label: "Overall Score", value: result.score, suffix: "/100", color: C_MINT },
                       { label: "Total Tweets", value: result.total.toLocaleString(), suffix: "", color: C_POS },
@@ -607,7 +607,7 @@ function SearchContent() {
                         initial={{ opacity: 0, y: 16 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: i * 0.07 }}
-                        className="rounded-2xl bg-[var(--surface)] border border-[var(--border)] p-5"
+                        className="rounded-2xl bg-[var(--surface)] border border-[var(--border)] p-6"
                       >
                         <p className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2">{kpi.label}</p>
                         <div className="flex items-end gap-1">
@@ -657,7 +657,7 @@ function SearchContent() {
                     >
                       <Card className="bg-[var(--surface)] border border-[var(--border)]">
                         <CardHeader className="pb-3">
-                          <CardTitle className="text-sm font-bold text-[var(--text-main)]">Top Keywords</CardTitle>
+                          <CardTitle className="text-sm font-bold text-[var(--text-main)]">Related Keywords</CardTitle>
                         </CardHeader>
                         <CardContent>
                           <div className="flex flex-wrap gap-2">

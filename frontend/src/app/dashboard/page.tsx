@@ -260,7 +260,7 @@ function MiniStat({ icon, label, value, accent = CHART_POSITIVE }: { icon: React
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      className="flex items-center gap-4 p-5 rounded-2xl bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--border-strong)] transition-all duration-300 group"
+      className="flex items-center gap-6 p-6 rounded-2xl bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--border-strong)] transition-all duration-300 group"
     >
       <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 transition-transform duration-300 group-hover:scale-110"
         style={{ background: `${accent}15`, color: accent }}>
@@ -339,10 +339,10 @@ function DashboardContent() {
         <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0 lg:pl-16 xl:pl-64">
           <TopBar />
           <div className="flex-1 flex flex-col overflow-y-auto">
-            <div className="flex-1 px-4 sm:px-6 lg:px-8 py-6 max-w-7xl mx-auto w-full">
+            <div className="flex-1 px-6 lg:px-8 py-8 max-w-7xl mx-auto w-full">
 
               {/* ── Header: Title + Search + Backend Status ─────── */}
-              <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
+              <div className="flex items-center justify-between gap-6 mb-8">
                 <div>
                   <h1 className="text-2xl font-black font-display text-[var(--text-main)] tracking-tight">Neural Dashboard</h1>
                   <p className="text-sm text-[var(--text-muted)] mt-1">Real-time sentiment dari keyword yang Anda cari.</p>
@@ -370,7 +370,7 @@ function DashboardContent() {
               </div>
 
               {/* ── KPI Stats Row ──────────────────────────────── */}
-              <motion.div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6" variants={containerVariants} initial="hidden" animate="visible">
+              <motion.div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-8" variants={containerVariants} initial="hidden" animate="visible">
                 <MiniStat
                   icon={<svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" /></svg>}
                   label="Total Analisis"
@@ -398,7 +398,7 @@ function DashboardContent() {
               </motion.div>
 
               {/* ── Bento Charts Grid ──────────────────────────── */}
-              <div className="grid grid-cols-12 gap-4 mb-6">
+              <div className="grid grid-cols-12 gap-6 mb-8">
 
                 {/* Sentiment Trend — spans 8 cols */}
                 <motion.div
@@ -528,7 +528,7 @@ function DashboardContent() {
                           <thead>
                             <tr className="border-b border-[var(--border)]">
                               {["Keyword", "Sentimen Utama", "Volume", "Skor", "Waktu"].map((h) => (
-                                <th key={h} className="text-left px-5 py-3.5 text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">{h}</th>
+                                <th key={h} className="text-left px-6 py-3.5 text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">{h}</th>
                               ))}
                             </tr>
                           </thead>
@@ -552,18 +552,18 @@ function DashboardContent() {
                                     className="border-b border-[var(--border)]/40 hover:bg-[var(--border)]/10 transition-colors cursor-pointer"
                                     onClick={() => router.push(`/search?q=${encodeURIComponent(item.query)}`)}
                                   >
-                                    <td className="px-5 py-4">
+                                    <td className="px-6 py-4">
                                       <span className="text-sm font-bold text-[var(--text-main)]">{item.query}</span>
                                     </td>
-                                    <td className="px-5 py-4">
+                                    <td className="px-6 py-4">
                                       <div className="flex items-center gap-2">
                                         <div className="w-2 h-2 rounded-full" style={{ backgroundColor: primary.color }} />
                                         <span className="text-sm font-medium text-[var(--text-main)]">{primary.label}</span>
                                         <span className="text-xs text-[var(--text-muted)]">({item.positivePct > item.neutralPct ? item.positivePct : item.neutralPct > item.negativePct ? item.neutralPct : item.negativePct}%)</span>
                                       </div>
                                     </td>
-                                    <td className="px-5 py-4 text-sm text-[var(--text-muted)] font-medium">{item.total.toLocaleString()} tw</td>
-                                    <td className="px-5 py-4">
+                                    <td className="px-6 py-4 text-sm text-[var(--text-muted)] font-medium">{item.total.toLocaleString()} tw</td>
+                                    <td className="px-6 py-4">
                                       <Badge
                                         className="text-xs font-bold border-0"
                                         style={score >= 70 ? { background: `${CHART_MINT}20`, color: CHART_MINT }
@@ -571,7 +571,7 @@ function DashboardContent() {
                                           : { background: `${CHART_NEGATIVE}20`, color: CHART_NEGATIVE }}
                                       >{score}</Badge>
                                     </td>
-                                    <td className="px-5 py-4 text-xs text-[var(--text-muted)]">{timeAgo(item.createdAt)}</td>
+                                    <td className="px-6 py-4 text-xs text-[var(--text-muted)]">{timeAgo(item.createdAt)}</td>
                                   </motion.tr>
                                 );
                               })}

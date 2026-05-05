@@ -333,7 +333,7 @@ export default function LandingPage() {
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-[var(--primary)]" />
                 </span>
                 <span className="text-xs font-semibold text-[var(--text-main)]">
-                  Neural Model V2.1 — Now 40% faster
+                  Neural Model V1.0
                 </span>
               </Badge>
             </motion.div>
@@ -587,10 +587,6 @@ export default function LandingPage() {
                   className="px-6 py-2 bg-gradient-to-r from-[var(--primary)] to-[var(--secondary)] text-white font-bold shadow-lg shadow-[var(--primary)]/25 hover:shadow-xl hover:shadow-[var(--primary)]/30 transition-all">
                   Start Free Analysis
                   <IconArrowRight className="ml-2 w-4 h-4" />
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => router.push("/login")}
-                  className="px-6 py-2 border-[var(--border-strong)] text-[var(--text-main)] hover:bg-[var(--surface-container)] transition-all font-semibold">
-                  View Live Demo
                 </Button>
               </div>
             </div>
