@@ -43,12 +43,9 @@ export interface HistoryStats {
 }
 
 export function computeOverallScore(positive: number, negative: number, neutral: number): number {
-  const total = positive + negative + neutral;
-  if (total === 0) return 50;
-  const posPct = (positive / total) * 100;
-  if (posPct >= 50) return 65 + Math.round(posPct / 3);
-  if (posPct >= 25) return 40 + Math.round(posPct / 2);
-  return 20 + Math.round(posPct);
+  const total = positive + negative + neutral || 1;
+  const rawScore = (positive * 1 + neutral * 0.5 + negative * 0) / total;
+  return Math.round(rawScore * 100);
 }
 
 export function computeAvgSentiment(items: HistoryItem[]): number {

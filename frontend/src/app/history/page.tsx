@@ -5,15 +5,30 @@ import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/stores/authStore";
 import Sidebar, { SidebarToggle } from "@/components/Sidebar";
 import TopBar from "@/components/TopBar";
-import { IconByName } from "@/components/ReactIcon";
-import { FaSearch, FaDownload, FaExclamationCircle, FaHistory, FaEye, FaSyncAlt, FaChevronLeft, FaChevronRight } from "react-icons/fa";
-import PageLayout from "@/components/PageLayout";
+import { motion } from "framer-motion";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import {
-  useSentimentHistory,
-  computeOverallScore,
-  computeAvgSentiment,
-  computePeakHour,
-} from "@/hooks/useSentimentHistory";
+  Search,
+  Download,
+  History,
+  Eye,
+  RefreshCw,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+} from "lucide-react";
+import { useSentimentHistory } from "@/hooks/useSentimentHistory";
+import type { HistoryItem } from "@/hooks/useSentimentHistory";
+
+const BACKEND_API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
+
+const C_POS = "#22D3EE";
+const C_NEU = "#818CF8";
+const C_NEG = "#FB7185";
+const C_MINT = "#34D399";
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
@@ -33,318 +48,325 @@ function formatTime(iso: string): string {
   });
 }
 
-function SentimentDots({ positive, negative, neutral }: { positive: number; negative: number; neutral: number }) {
+function timeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const min = Math.floor(diff / 60000);
+  if (min < 1) return "Baru saja";
+  if (min < 60) return `${min}m lalu`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}h lalu`;
+  return `${Math.floor(hr / 24)}d lalu`;
+}
+
+/* ── Sentiment Mix ─────────────────────────────────── */
+function SentimentMix({ positive, neutral, negative }: { positive: number; neutral: number; negative: number }) {
   return (
-    <div className="flex items-center justify-center gap-1.5">
-      <div className="flex gap-1">
-        <div
-          className="w-2.5 h-2.5 rounded-full bg-emerald-500"
-          title={`Positive: ${positive}%`}
-        />
-        <div
-          className="w-2.5 h-2.5 rounded-full bg-yellow-400"
-          title={`Neutral: ${neutral}%`}
-        />
-        <div
-          className="w-2.5 h-2.5 rounded-full bg-rose-500"
-          title={`Negative: ${negative}%`}
-        />
+    <div className="flex items-center gap-2">
+      <div className="flex -space-x-1">
+        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: C_POS }} title={`Positive: ${positive}%`} />
+        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: C_NEU }} title={`Neutral: ${neutral}%`} />
+        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: C_NEG }} title={`Negative: ${negative}%`} />
       </div>
-      <span className="text-xs text-app-muted dark:text-app-muted">
-        {positive + negative + neutral > 0 ? `${positive}/${neutral}/${negative}` : "—"}
+      <span className="text-[10px] font-bold text-[var(--text-muted)] tabular-nums">
+        {positive}/{neutral}/{negative}
       </span>
     </div>
   );
 }
 
+/* ── Score Badge ─────────────────────────────────── */
 function ScoreBadge({ score }: { score: number }) {
-  const label =
-    score >= 70 ? "Positive" : score >= 40 ? "Mixed" : "Negative";
-  const cls =
-    score >= 70
-      ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/50"
-      : score >= 40
-      ? "bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-900/50"
-      : "bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-900/50";
+  const [color, label] = score >= 70
+    ? [C_MINT, "Positive"]
+    : score >= 40
+    ? [C_NEU, "Neutral"]
+    : [C_NEG, "Negative"];
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-black border ${cls}`}>
-      {score}
-    </span>
+    <Badge className="text-[10px] font-bold border-0"
+      style={{ background: `${color}18`, color, border: `1px solid ${color}30` }}>
+      {label}
+    </Badge>
   );
 }
 
+/* ── History Card ─────────────────────────────────── */
+function HistoryCard({ item, onView, onReanalyze }: {
+  item: HistoryItem;
+  onView: () => void;
+  onReanalyze: () => void;
+}) {
+  const score = Math.round((item.positivePct * 1 + item.neutralPct * 0.5 + item.negativePct * 0) / 100 * 100);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="group rounded-2xl bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--border-strong)] transition-all duration-300 overflow-hidden"
+    >
+      <div className="p-5">
+        <div className="flex items-start justify-between gap-4 mb-4">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <h3
+                onClick={() => onReanalyze()}
+                className="text-sm font-bold text-[var(--text-main)] hover:text-[var(--primary)] cursor-pointer transition-colors truncate"
+              >
+                {item.query}
+              </h3>
+              <ScoreBadge score={score} />
+            </div>
+            <div className="flex items-center gap-3 text-[var(--text-muted)]">
+              <span className="text-[10px] font-semibold uppercase tracking-wider">{item.total.toLocaleString()} tweets</span>
+              <span className="w-1 h-1 rounded-full bg-[var(--border)]" />
+              <div className="flex items-center gap-1 text-[10px]">
+                <Clock className="w-3 h-3" />
+                <span>{timeAgo(item.createdAt)}</span>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              onClick={onView}
+              className="h-8 px-3 rounded-lg text-xs font-bold bg-[var(--primary)] text-white hover:opacity-90"
+            >
+              <Eye className="w-3 h-3 mr-1" />
+              Detail
+            </Button>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <SentimentMix positive={item.positivePct} neutral={item.neutralPct} negative={item.negativePct} />
+
+          <div className="flex items-center gap-3 text-[var(--text-muted)]">
+            <span className="text-[10px] font-semibold">{formatDate(item.createdAt)}</span>
+            <span className="text-[9px] opacity-60">{formatTime(item.createdAt)}</span>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+/* ── Pagination ───────────────────────────────────── */
+function Pagination({
+  page, totalPages, onNext, onPrev, onPage
+}: {
+  page: number;
+  totalPages: number;
+  onNext: () => void;
+  onPrev: () => void;
+  onPage: (p: number) => void;
+}) {
+  const pages = Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+    if (totalPages <= 5) return i + 1;
+    if (page <= 3) return i + 1;
+    if (page >= totalPages - 2) return totalPages - 4 + i;
+    return page - 2 + i;
+  });
+
+  return (
+    <div className="flex items-center justify-center gap-2">
+      <button
+        onClick={onPrev}
+        disabled={page <= 1}
+        className="w-8 h-8 flex items-center justify-center rounded-lg border border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface)] hover:text-[var(--text-main)] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+      >
+        <ChevronLeft className="w-4 h-4" />
+      </button>
+      {pages.map((p) => (
+        <button
+          key={p}
+          onClick={() => onPage(p)}
+          className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs font-semibold transition-all ${
+            page === p
+              ? "bg-[var(--primary)] text-white"
+              : "border border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface)] hover:text-[var(--text-main)]"
+          }`}
+        >
+          {p}
+        </button>
+      ))}
+      <button
+        onClick={onNext}
+        disabled={page >= totalPages}
+        className="w-8 h-8 flex items-center justify-center rounded-lg border border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface)] hover:text-[var(--text-main)] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+      >
+        <ChevronRight className="w-4 h-4" />
+      </button>
+    </div>
+  );
+}
+
+/* ── History Page ─────────────────────────────────── */
 export default function HistoryPage() {
   const router = useRouter();
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, isHydrated, hydrate } = useAuthStore();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { items, loading, error, page, totalPages, total, filter, setFilter, fetchHistory, setPage } =
+  const [filter, setFilter] = useState("");
+
+  const { items, loading, error, page, totalPages, total, fetchHistory } =
     useSentimentHistory();
 
+  useEffect(() => { hydrate(); }, [hydrate]);
+
   useEffect(() => {
-    if (!isAuthenticated) {
-      router.replace("/login");
-    }
-  }, [isAuthenticated, router]);
+    if (isHydrated && !isAuthenticated) router.replace("/login");
+  }, [isHydrated, isAuthenticated, router]);
 
   useEffect(() => {
     if (isAuthenticated) void fetchHistory(1);
-  }, [isAuthenticated, fetchHistory]);
+  }, [isAuthenticated]);
 
-  if (!isAuthenticated) return null;
+  const filteredItems = filter
+    ? items.filter((item) => item.query.toLowerCase().includes(filter.toLowerCase()))
+    : items;
 
-  const avgScore = computeAvgSentiment(items);
-  const peakHour = computePeakHour(items);
+  if (!isHydrated || !isAuthenticated) return null;
+
+  const avgScore = filteredItems.length > 0
+    ? Math.round(
+        filteredItems.reduce(
+          (sum, item) =>
+            sum +
+            Math.round((item.positivePct * 1 + item.neutralPct * 0.5 + item.negativePct * 0) / 100 * 100),
+          0,
+        ) / filteredItems.length,
+      )
+    : 0;
 
   return (
-    <div className="flex h-screen overflow-hidden bg-app-bg dark:bg-app-bg">
-      <SidebarToggle onClick={() => setSidebarOpen(true)} />
+    <div className="flex h-screen overflow-hidden bg-[var(--background)]">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <PageLayout>
-        <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0 lg:pl-16 xl:pl-64">
-          <TopBar />
-          <div className="flex-1 flex flex-col overflow-y-auto">
-            <div className="flex-1 px-4 sm:px-6 lg:px-8 py-6 sm:py-8 max-w-7xl mx-auto w-full flex flex-col gap-6 sm:gap-8">
+      <SidebarToggle onClick={() => setSidebarOpen(true)} />
+      <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0 lg:pl-16 xl:pl-64">
+        <TopBar />
+        <div className="flex-1 flex flex-col overflow-y-auto">
+          <div className="flex-1 px-4 sm:px-6 lg:px-8 py-5 max-w-7xl mx-auto w-full flex flex-col gap-6">
 
-              {/* Stats Bento */}
-              <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-                {/* Total Scans */}
-                <div className="bg-app-bg dark:bg-app-surface-low rounded-xl sm:rounded-2xl border border-app-border-strong dark:border-app-border-strong p-4 sm:p-6 shadow-sm">
-                  <p className="text-[10px] sm:text-xs font-bold text-app-muted dark:text-app-muted uppercase tracking-wider mb-1">Total Scans</p>
-                  <div className="flex items-end gap-2">
-                    <span className="text-2xl sm:text-3xl font-bold text-app-main dark:text-app-main">{total.toLocaleString()}</span>
-                    <span className="text-emerald-500 text-[10px] sm:text-xs font-bold mb-1">analisis</span>
+            {/* Header */}
+            <div>
+              <h1 className="text-2xl font-black font-display text-[var(--text-main)] tracking-tight mb-1">Analysis History</h1>
+              <p className="text-sm text-[var(--text-muted)]">Lihat semua riwayat analisis sentimen</p>
+            </div>
+
+            {/* KPI Bento */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <Card className="bg-[var(--surface)] border border-[var(--border)]">
+                <CardContent className="p-5">
+                  <p className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2">Total Analisis</p>
+                  <div className="flex items-end gap-1">
+                    <span className="text-3xl font-black text-[var(--text-main)] leading-none">{total.toLocaleString()}</span>
                   </div>
-                </div>
-
-                {/* Avg. Sentiment */}
-                <div className="bg-app-bg dark:bg-app-surface-low rounded-xl sm:rounded-2xl border border-app-border-strong dark:border-app-border-strong p-4 sm:p-6 shadow-sm">
-                  <p className="text-[10px] sm:text-xs font-bold text-app-muted dark:text-app-muted uppercase tracking-wider mb-1">Avg. Overall Score</p>
-                  <div className="flex items-end gap-2">
-                    <span className="text-2xl sm:text-3xl font-bold text-app-main dark:text-app-main">{avgScore}</span>
-                    <span className="text-app-muted text-[10px] sm:text-xs font-bold mb-1">/ 100</span>
+                </CardContent>
+              </Card>
+              <Card className="bg-[var(--surface)] border border-[var(--border)]">
+                <CardContent className="p-5">
+                  <p className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2">Avg. Score</p>
+                  <div className="flex items-end gap-1">
+                    <span className="text-3xl font-black text-[var(--text-main)] leading-none">{avgScore}</span>
+                    <span className="text-sm font-medium text-[var(--text-muted)] mb-0.5">/100</span>
                   </div>
-                  {avgScore > 0 && (
-                    <div className="mt-2 sm:mt-3 h-1 sm:h-1.5 bg-app-surface-low dark:bg-app-surface-lowest rounded-full overflow-hidden">
-                      <div
-                        className="h-full rounded-full"
-                        style={{
-                          width: `${avgScore}%`,
-                          backgroundColor:
-                            avgScore >= 70 ? "#22c55e" : avgScore >= 40 ? "#3b82f6" : "#f87171",
-                        }}
-                      />
-                    </div>
-                  )}
-                </div>
-
-                {/* Peak Hour */}
-                <div className="bg-app-bg dark:bg-app-surface-low rounded-xl sm:rounded-2xl border border-app-border-strong dark:border-app-border-strong p-4 sm:p-6 shadow-sm sm:col-span-2 lg:col-span-1">
-                  <p className="text-[10px] sm:text-xs font-bold text-app-muted dark:text-app-muted uppercase tracking-wider mb-1">Peak Hour (WIB)</p>
-                  <div className="flex items-end gap-2">
-                    <span className="text-2xl sm:text-3xl font-bold text-app-main dark:text-app-main">{peakHour}</span>
-                    <span className="text-app-muted text-[10px] sm:text-xs font-bold mb-1">UTC+7</span>
-                  </div>
-                </div>
-              </section>
-
-              {/* Search History Table */}
-              <section className="bg-app-bg dark:bg-app-surface-low rounded-xl sm:rounded-2xl border border-app-border-strong dark:border-app-border-strong shadow-sm overflow-hidden flex-1">
-                {/* Table header controls */}
-                <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-100 dark:border-app-border-strong">
-                  <div className="relative w-72">
-                    <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-app-muted text-lg" />
-                    <input
-                      type="text"
-                      placeholder="Cari riwayat..."
-                      value={filter}
-                      onChange={(e) => setFilter(e.target.value)}
-                      className="w-full h-8 sm:h-9 pl-8 sm:pl-9 pr-3 sm:pr-4 rounded-lg bg-app-surface-low dark:bg-app-surface-low border border-app-border-strong dark:border-app-border-strong text-app-main dark:text-app-main placeholder:text-app-muted dark:placeholder:text-app-muted focus:outline-none focus:ring-2 focus:ring-app-primary/20 dark:focus:ring-app-primary/20 text-xs sm:text-sm"
+                  <div className="mt-3 h-1.5 rounded-full bg-[var(--border)] overflow-hidden">
+                    <motion.div
+                      className="h-full rounded-full"
+                      style={{ backgroundColor: avgScore >= 65 ? C_MINT : avgScore >= 40 ? C_NEU : C_NEG }}
+                      initial={{ width: 0 }}
+                      animate={{ width: `${avgScore}%` }}
+                      transition={{ duration: 0.8, ease: "easeOut" }}
                     />
                   </div>
-                  <button className="flex items-center gap-1.5 h-9 px-3 rounded-lg bg-app-bg dark:bg-app-surface-low border border-app-border-strong dark:border-app-border-strong text-app-main dark:text-app-main hover:bg-app-surface-low dark:hover:bg-app-surface-low transition-colors text-sm">
-                    <FaDownload className="text-base" />
-                    Export CSV
-                  </button>
+                </CardContent>
+              </Card>
+              <Card className="bg-[var(--surface)] border border-[var(--border)]">
+                <CardContent className="p-5">
+                  <p className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2">Filter</p>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] w-4 h-4" />
+                    <Input
+                      type="text"
+                      placeholder="Cari keyword..."
+                      value={filter}
+                      onChange={(e) => setFilter(e.target.value)}
+                      className="pl-9 h-9 text-sm"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* History List */}
+            {loading ? (
+              <div className="flex items-center justify-center py-20">
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                  className="w-8 h-8 border-2 border-[var(--primary)] border-t-transparent rounded-full"
+                />
+              </div>
+            ) : error ? (
+              <div className="flex flex-col items-center justify-center py-16 gap-4">
+                <div className="w-16 h-16 rounded-2xl bg-[var(--border)] flex items-center justify-center">
+                  <svg className="w-8 h-8 text-[var(--text-muted)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                  </svg>
+                </div>
+                <p className="text-sm text-[var(--text-muted)]">{error}</p>
+                <Button size="sm" onClick={() => void fetchHistory(page)} className="font-bold">
+                  Coba Lagi
+                </Button>
+              </div>
+            ) : filteredItems.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20 gap-4">
+                <div className="w-16 h-16 rounded-2xl bg-[var(--border)] flex items-center justify-center">
+                  <History className="w-8 h-8 text-[var(--text-muted)] opacity-40" />
+                </div>
+                <p className="text-sm text-[var(--text-muted)]">
+                  {filter ? "Tidak ada hasil untuk filter tersebut." : "Belum ada riwayat analisis."}
+                </p>
+                {!filter && (
+                  <Button size="sm" onClick={() => router.push("/dashboard")} className="font-bold">
+                    Mulai Analisis
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {filteredItems.map((item) => (
+                    <HistoryCard
+                      key={item.jobId}
+                      item={item}
+                      onView={() => router.push(`/history/detail/${item.jobId}`)}
+                      onReanalyze={() => router.push(`/search?q=${encodeURIComponent(item.query)}`)}
+                    />
+                  ))}
                 </div>
 
-                {/* Table */}
-                <div className="overflow-x-auto">
-                  {loading ? (
-                    <div className="flex items-center justify-center py-8 sm:py-16">
-                      <div className="flex flex-col items-center gap-3">
-                        <div className="w-6 h-6 sm:w-8 sm:h-8 border-2 border-app-primary border-t-transparent rounded-full animate-spin" />
-                        <p className="text-xs sm:text-sm text-app-muted dark:text-app-muted">Memuat riwayat...</p>
-                      </div>
-                    </div>
-                  ) : error ? (
-                    <div className="flex flex-col items-center justify-center py-16 gap-4">
-                      <FaExclamationCircle className="text-4xl text-red-500" />
-                      <p className="text-sm text-app-muted dark:text-app-muted">{error}</p>
-                      <button
-                        onClick={() => void fetchHistory(page)}
-                        className="px-4 py-2 bg-app-primary text-white text-xs sm:text-sm font-bold rounded-lg hover:opacity-90"
-                      >
-                        Coba Lagi
-                      </button>
-                    </div>
-                  ) : items.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-16 gap-3">
-                      <FaHistory className="text-5xl text-app-muted dark:text-app-muted opacity-40" />
-                      <p className="text-sm text-app-muted dark:text-app-muted">
-                        {filter ? "Tidak ada hasil untuk filter tersebut." : "Belum ada riwayat analisis."}
-                      </p>
-                      {!filter && (
-                        <button
-                          onClick={() => router.push("/dashboard")}
-                          className="mt-2 px-4 py-2 bg-app-primary text-white text-sm font-bold rounded-lg hover:opacity-90"
-                        >
-                          Mulai Analisis
-                        </button>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="overflow-x-auto">
-                    <table className="w-full min-w-[500px]">
-                      <thead>
-                        <tr className="bg-app-surface-low/50 dark:bg-app-surface-low border-b border-app-border-strong dark:border-app-border-strong">
-                          <th className="text-left px-3 sm:px-6 py-2 sm:py-3 text-[9px] sm:text-xs font-bold text-app-muted dark:text-app-muted uppercase tracking-wide">Keyword</th>
-                          <th className="text-left px-3 sm:px-6 py-2 sm:py-3 text-[9px] sm:text-xs font-bold text-app-muted dark:text-app-muted uppercase tracking-wide hidden sm:table-cell">Tanggal / Waktu</th>
-                          <th className="text-center px-3 sm:px-6 py-2 sm:py-3 text-[9px] sm:text-xs font-bold text-app-muted dark:text-app-muted uppercase tracking-wide hidden md:table-cell">Sentiment Mix</th>
-                          <th className="text-center px-3 sm:px-6 py-2 sm:py-3 text-[9px] sm:text-xs font-bold text-app-muted dark:text-app-muted uppercase tracking-wide">Skor</th>
-                          <th className="text-center px-3 sm:px-6 py-2 sm:py-3 text-[9px] sm:text-xs font-bold text-app-muted dark:text-app-muted uppercase tracking-wide">Aksi</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 dark:divide-app-surface-container">
-                        {items.map((item) => {
-                          const score = computeOverallScore(item.positivePct, item.negativePct, item.neutralPct);
-                          return (
-                            <tr
-                              key={item.jobId}
-                              className="hover:bg-app-surface-low/80 dark:hover:bg-app-surface-low transition-colors group"
-                            >
-                              <td className="px-3 sm:px-6 py-3 sm:py-5">
-                                <button
-                                  onClick={() => router.push(`/search?q=${encodeURIComponent(item.query)}`)}
-                                  className="text-xs sm:text-sm font-bold text-app-main dark:text-app-main hover:text-app-primary dark:hover:text-app-primary transition-colors text-left truncate max-w-[100px] sm:max-w-none"
-                                >
-                                  {item.query}
-                                </button>
-                              </td>
-                              <td className="px-3 sm:px-6 py-3 sm:py-5 hidden sm:table-cell">
-                                <div className="text-[10px] sm:text-sm text-app-muted dark:text-app-muted font-medium">
-                                  {formatDate(item.createdAt)}
-                                </div>
-                                <div className="text-[9px] sm:text-xs text-app-muted dark:text-app-muted opacity-70">
-                                  {formatTime(item.createdAt)}
-                                </div>
-                              </td>
-                              <td className="px-3 sm:px-6 py-3 sm:py-5 hidden md:table-cell">
-                                <SentimentDots
-                                  positive={item.positivePct}
-                                  negative={item.negativePct}
-                                  neutral={item.neutralPct}
-                                />
-                              </td>
-                              <td className="px-3 sm:px-6 py-3 sm:py-5">
-                                <div className="flex items-center justify-center">
-                                  <ScoreBadge score={score} />
-                                </div>
-                              </td>
-                              <td className="px-3 sm:px-6 py-3 sm:py-5">
-                                <div className="flex items-center justify-center gap-1 transition-opacity">
-                                  <button
-                                    onClick={() => router.push(`/history/detail/${item.jobId}?q=${encodeURIComponent(item.query)}`)}
-                                    className="p-1 sm:p-1.5 rounded-md text-app-muted dark:text-app-muted hover:text-app-primary dark:hover:text-app-primary hover:bg-app-surface-low dark:hover:bg-app-surface-low transition-colors"
-                                    title="Lihat Detail"
-                                  >
-                                    <FaEye className="text-base" />
-                                  </button>
-                                  <button
-                                    onClick={() => router.push(`/search?q=${encodeURIComponent(item.query)}`)}
-                                    className="p-1 sm:p-1.5 rounded-md text-app-muted dark:text-app-muted hover:text-app-primary dark:hover:text-app-primary hover:bg-app-surface-low dark:hover:bg-app-surface-low transition-colors"
-                                    title="Analisis Ulang"
-                                  >
-                                    <FaSyncAlt className="text-base" />
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                    </div>
-                  )}
-                </div>
-
-                {/* Pagination footer */}
-                {!loading && items.length > 0 && (
-                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-3 sm:px-6 py-3 sm:py-4 border-t border-slate-100 dark:border-app-border-strong">
-                    <p className="text-[10px] sm:text-xs text-app-muted dark:text-app-muted">
-                      Hal. {page} dari {totalPages} &nbsp;·&nbsp; {total.toLocaleString()} hasil
-                    </p>
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => {
-                          if (page > 1) void fetchHistory(page - 1);
-                        }}
-                        disabled={page <= 1}
-                        className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-md border border-app-border-strong dark:border-app-border-strong text-app-muted dark:text-app-muted hover:bg-app-primary hover:text-app-surface dark:hover:bg-app-primary transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                      >
-                        <FaChevronLeft className="text-base" />
-                      </button>
-                      {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                        let pageNum: number;
-                        if (totalPages <= 5) {
-                          pageNum = i + 1;
-                        } else if (page <= 3) {
-                          pageNum = i + 1;
-                        } else if (page >= totalPages - 2) {
-                          pageNum = totalPages - 4 + i;
-                        } else {
-                          pageNum = page - 2 + i;
-                        }
-                        return (
-                          <button
-                            key={pageNum}
-                            onClick={() => void fetchHistory(pageNum)}
-                            className={`w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-md text-[10px] sm:text-sm font-medium transition-colors ${
-                              page === pageNum
-                                ? "bg-app-primary dark:bg-app-primary text-white"
-                                : "border border-app-border-strong dark:border-app-border-strong text-app-muted dark:text-app-muted hover:bg-app-primary hover:text-app-surface dark:hover:bg-app-primary"
-                            }`}
-                          >
-                            {pageNum}
-                          </button>
-                        );
-                      })}
-                      <button
-                        onClick={() => {
-                          if (page < totalPages) void fetchHistory(page + 1);
-                        }}
-                        disabled={page >= totalPages}
-                        className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-md border border-app-border-strong dark:border-app-border-strong text-app-muted dark:text-app-muted hover:bg-app-primary hover:text-app-surface dark:hover:bg-app-primary transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                      >
-                        <FaChevronRight className="text-base" />
-                      </button>
-                    </div>
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="flex justify-center">
+                    <Pagination
+                      page={page}
+                      totalPages={totalPages}
+                      onNext={() => {
+                        if (page < totalPages) void fetchHistory(page + 1);
+                      }}
+                      onPrev={() => {
+                        if (page > 1) void fetchHistory(page - 1);
+                      }}
+                      onPage={(p) => void fetchHistory(p)}
+                    />
                   </div>
                 )}
-              </section>
-
-              {/* Footer */}
-              <footer className="mt-auto pt-4 sm:pt-6 pb-2 flex flex-col sm:flex-row justify-between items-center gap-2 sm:gap-0 text-[9px] sm:text-[10px] uppercase tracking-widest font-bold text-app-muted dark:text-app-muted border-t border-app-border-strong dark:border-app-border-strong">
-                <span>© 2026 SentiTrack</span>
-                <div className="flex gap-3 sm:gap-6">
-                  <a href="#" className="hover:text-app-primary dark:hover:text-app-primary transition-colors">System Status</a>
-                  <a href="#" className="hover:text-app-primary dark:hover:text-app-primary transition-colors">Privacy Protocol</a>
-                  <a href="#" className="hover:text-app-primary dark:hover:text-app-primary transition-colors">Security Center</a>
-                </div>
-              </footer>
-            </div>
+              </>
+            )}
           </div>
         </div>
-      </PageLayout>
+      </div>
     </div>
   );
 }

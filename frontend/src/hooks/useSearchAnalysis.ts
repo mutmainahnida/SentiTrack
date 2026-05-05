@@ -68,10 +68,7 @@ export function useSearchAnalysis() {
     setStatus("loading");
 
     try {
-      const res = await authFetch(`${BACKEND_API}/api/sentiment`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: trimmed, limit: 50 }),
+      const res = await authFetch(`${BACKEND_API}/api/sentiment?q=${encodeURIComponent(trimmed)}&limit=50`, {
         signal: controller.signal,
       });
 
