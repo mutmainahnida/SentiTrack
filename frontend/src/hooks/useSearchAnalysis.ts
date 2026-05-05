@@ -1,11 +1,9 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { authFetch } from "@/stores/authStore";
 
 const BACKEND_API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
-
-export type AnalysisStatus = "idle" | "loading" | "done" | "error";
 
 export type TweetSentiment = "positive" | "neutral" | "negative";
 
@@ -44,31 +42,34 @@ const TRENDING_KEYWORDS = [
 ];
 
 export function useSearchAnalysis() {
-  const [status, setStatus] = useState<AnalysisStatus>("idle");
-  const [messageIndex, setMessageIndex] = useState(0);
+  const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [result, setResult] = useState<SentimentResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [query, setQuery] = useState("");
+
+  // Track the last analyzed query — survives re-renders so we don't re-fetch the same query
+  const completedQueryRef = useRef<string | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const startAnalysis = useCallback(async (searchQuery: string) => {
-    if (!searchQuery.trim()) return;
+    const trimmed = searchQuery.trim();
+    if (!trimmed) return;
 
-    setQuery(searchQuery.trim());
-    setStatus("loading");
-    setMessageIndex(0);
+    // Skip if already successfully analyzed this exact query
+    if (completedQueryRef.current === trimmed && result !== null) return;
+
+    // Abort any in-flight request before starting a new one
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    completedQueryRef.current = trimmed;
     setResult(null);
     setError(null);
-
-    // Cycle through loading messages
-    const messageInterval = setInterval(() => {
-      setMessageIndex((prev) => (prev + 1) % 4);
-    }, 2500);
+    setStatus("loading");
 
     try {
-      const res = await authFetch(`${BACKEND_API}/api/sentiment`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: searchQuery, limit: 50 }),
+      const res = await authFetch(`${BACKEND_API}/api/sentiment?q=${encodeURIComponent(trimmed)}&limit=50`, {
+        signal: controller.signal,
       });
 
       if (!res.ok) {
@@ -76,31 +77,44 @@ export function useSearchAnalysis() {
       }
 
       const apiData = await res.json();
-      clearInterval(messageInterval);
 
-      // Backend returns { success, message, data: { jobId, status, createdAt, result: { query, total, summary, tweets, topInfluential } } }
-      const wrapper = apiData as { success: boolean; message: string; data: { jobId: string; status: string; createdAt: string; result: { query: string; total: number; summary: { positive: number; negative: number; neutral: number }; tweets: Record<string, unknown>[]; topInfluential: Record<string, unknown>[] } } };
-      const sentimentResult = wrapper.data.result;
-      const { summary, tweets: allTweets, topInfluential } = sentimentResult;
+      // ── Defensive parsing ─────────────────────────────────────────────
+      if (!apiData) {
+        throw new Error("Empty response from server.");
+      }
 
-      // Sentiment percentages from backend
-      const positive = Math.round(summary.positive);
-      const negative = Math.round(summary.negative);
-      const neutral = Math.round(summary.neutral);
+      // API wraps in data.result — but the sentiment API returns data directly
+      // Both shapes: { data: { result: {...} } }  AND  { data: {...} }
+      const raw = apiData.data;
+      if (!raw) {
+        const msg = apiData.message ?? "Invalid response from server.";
+        throw new Error(msg);
+      }
 
-      // Overall score derived from sentiment balance
-      const score = positive >= 50
-        ? 65 + Math.round(positive / 3)
-        : positive >= 25
-        ? 40 + Math.round(positive / 2)
-        : 20 + Math.round(positive);
+      // Unwrap the result layer if present
+      const analysisResult = raw.result ?? raw;
 
-      // Map all tweets from backend
-      const tweets: ScrapedTweet[] = (allTweets || []).map((t) => ({
-        tweetId: String(t.tweetId || ""),
-        text: String(t.text || ""),
-        username: String(t.username || ""),
-        name: String(t.username || "Unknown"),
+      // Summary — fallback to zeros if missing
+      const summary = analysisResult.summary ?? {};
+      const positive = Math.round(summary.positive ?? 0);
+      const negative = Math.round(summary.negative ?? 0);
+      const neutral = Math.round(summary.neutral ?? 0);
+
+      const allTweets = analysisResult.tweets ?? [];
+      const topInfluential = analysisResult.topInfluential ?? [];
+
+      // Overall score: weighted average (positive=1, neutral=0.5, negative=0) normalized 0-100
+      const totalPct = positive + neutral + negative || 1;
+      const rawScore = (positive * 1 + neutral * 0.5 + negative * 0) / totalPct;
+      const score = Math.round(rawScore * 100);
+
+      // Map all tweets (null-safe)
+      // Prefer `id` as the unique key; fall back to composite so duplicates are impossible
+      const tweets: ScrapedTweet[] = allTweets.map((t: Record<string, unknown>, idx: number) => ({
+        tweetId: String(t.id ?? t.tweetId ?? `tweet_${idx}`),
+        text: String(t.text ?? ""),
+        username: String(t.username ?? ""),
+        name: String(t.name ?? t.username ?? "Unknown"),
         views: Number(t.views) || 0,
         likes: Number(t.likes) || 0,
         retweets: Number(t.retweets) || 0,
@@ -110,12 +124,12 @@ export function useSearchAnalysis() {
         influenceScore: Number(t.influenceScore) || 0,
       }));
 
-      // Map top influential tweets
-      const topInfluentialMapped: ScrapedTweet[] = (topInfluential || []).map((t) => ({
-        tweetId: String(t.tweetId || ""),
-        text: String(t.text || ""),
-        username: String(t.username || ""),
-        name: String(t.username || "Unknown"),
+      // Map top influential tweets (null-safe)
+      const topInfluentialMapped: ScrapedTweet[] = topInfluential.map((t: Record<string, unknown>, idx: number) => ({
+        tweetId: String(t.id ?? t.tweetId ?? `influential_${idx}`),
+        text: String(t.text ?? ""),
+        username: String(t.username ?? ""),
+        name: String(t.name ?? t.username ?? "Unknown"),
         views: Number(t.views) || 0,
         likes: Number(t.likes) || 0,
         retweets: Number(t.retweets) || 0,
@@ -125,9 +139,9 @@ export function useSearchAnalysis() {
         influenceScore: Number(t.influenceScore) || 0,
       }));
 
-      // Build top keywords from all tweet text
-      const allText = (allTweets || [])
-        .map((t: Record<string, unknown>) => String(t.text || "").toLowerCase())
+      // Build related keywords from tweet text
+      const allText = allTweets
+        .map((t: Record<string, unknown>) => String(t.text ?? "").toLowerCase())
         .join(" ");
       const words = allText.match(/\b[a-z]{5,}\b/g) || [];
       const stopWords = new Set([
@@ -144,17 +158,22 @@ export function useSearchAnalysis() {
         .slice(0, 5)
         .map(([w]) => w.charAt(0).toUpperCase() + w.slice(1));
 
+      const rawKeywords = analysisResult.topKeywords;
+      const topKeywords: string[] = Array.isArray(rawKeywords) && rawKeywords.length > 0
+        ? rawKeywords
+        : [trimmed, ...topWords.slice(0, 4)];
+
       const finalResult: SentimentResult = {
-        jobId: String(wrapper.data.jobId || `job_${Date.now()}`),
-        status: String(wrapper.data.status || "completed"),
-        createdAt: String(wrapper.data.createdAt || new Date().toISOString()),
-        query: String(sentimentResult.query || searchQuery),
+        jobId: String(raw.id ?? `job_${Date.now()}`),
+        status: String(raw.status ?? "completed"),
+        createdAt: String(raw.createdAt ?? new Date().toISOString()),
+        query: String(analysisResult.query ?? trimmed),
         score,
         positive,
         neutral,
         negative,
-        total: sentimentResult.total || (allTweets || []).length,
-        topKeywords: [searchQuery, ...topWords.slice(0, 4)],
+        total: analysisResult.total ?? allTweets.length,
+        topKeywords,
         tweets,
         topInfluential: topInfluentialMapped,
       };
@@ -162,26 +181,30 @@ export function useSearchAnalysis() {
       setResult(finalResult);
       setStatus("done");
     } catch (err: unknown) {
-      clearInterval(messageInterval);
-      const message = err instanceof Error ? err.message : "Gagal mengambil data dari server.";
-      setError("Gagal mengambil data. Coba lagi ya.");
+      if (err instanceof Error && err.name === "AbortError") {
+        // Request was cancelled — silently ignore
+        return;
+      }
+      const message = err instanceof Error
+        ? (err.message || "Gagal mengambil data dari server.")
+        : "Gagal mengambil data. Coba lagi ya.";
+      setError(message);
       setStatus("error");
     }
   }, []);
 
   const reset = useCallback(() => {
-    setStatus("idle");
-    setMessageIndex(0);
+    abortControllerRef.current?.abort();
+    completedQueryRef.current = null;
     setResult(null);
     setError(null);
+    setStatus("idle");
   }, []);
 
   return {
     status,
-    messageIndex,
     result,
     error,
-    query,
     startAnalysis,
     reset,
     trendingKeywords: TRENDING_KEYWORDS,
