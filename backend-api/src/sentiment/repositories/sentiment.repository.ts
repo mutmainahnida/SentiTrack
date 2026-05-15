@@ -101,6 +101,39 @@ export class SentimentRepository {
       where: isAdmin ? {} : { userId },
       orderBy: { createdAt: 'desc' },
       take: 50,
+      select: {
+        id: true,
+        jobId: true,
+        query: true,
+        status: true,
+        total: true,
+        positivePct: true,
+        negativePct: true,
+        neutralPct: true,
+        createdAt: true,
+      },
+    });
+  }
+
+  async findById(id: string) {
+    return this.prisma.sentimentJobHistory.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        jobId: true,
+        query: true,
+        product: true,
+        total: true,
+        requestedLimit: true,
+        positivePct: true,
+        negativePct: true,
+        neutralPct: true,
+        status: true,
+        createdAt: true,
+        completedAt: true,
+        errorMessage: true,
+        result: true,
+      },
     });
   }
 

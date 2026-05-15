@@ -68,4 +68,8 @@ export class SentimentService {
   async getByJobId(jobId: string) {
     return this.sentimentRepository.findByJobId(jobId);
   }
+
+  async getHistoryDetail(id: string) {
+    return this.sentimentRepository.findById(id);
+  }
 }

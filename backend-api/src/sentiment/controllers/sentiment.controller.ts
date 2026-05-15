@@ -5,6 +5,7 @@ import {
   Get,
   HttpException,
   HttpStatus,
+  Param,
   Post,
   Query,
   UseGuards,
@@ -30,6 +31,22 @@ export class SentimentController {
     if (!user) throw new HttpException('User not found', HttpStatus.NOT_FOUND);
     const history = await this.sentimentService.getHistory(user.id, user.roleId === 1);
     return ApiResponseFactory.success('History retrieved', history);
+  }
+
+  @Get('/history/:id')
+  async getHistoryDetail(
+    @CurrentUser('email') email: string,
+    @Param('id') id: string,
+  ) {
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    if (!user) throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+
+    const detail = await this.sentimentService.getHistoryDetail(id);
+    if (!detail) {
+      throw new HttpException('History not found', HttpStatus.NOT_FOUND);
+    }
+
+    return ApiResponseFactory.success('History detail retrieved', detail);
   }
 
   @Get()
